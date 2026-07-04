@@ -228,7 +228,11 @@ python run.py --year r03 --step export --formats parquet,pmtiles
 - 令和3年度: 箇所別基本表 <https://www.mlit.go.jp/road/census/r3/index.html> /
   可視化ツール <https://www.mlit.go.jp/road/ir/ir-data/census_visualizationR3/index.html>
 - 平成27年度: 可視化ツール <https://www.mlit.go.jp/road/ir/ir-data/census_visualization2/index.html>
-- ライセンス: 政府標準利用規約（第2.0版）準拠 <https://www.mlit.go.jp/link.html>
+- ライセンス: 国土交通省ウェブサイトの利用ルール ＝ **公共データ利用規約（第1.0版・PDL1.0）**（CC BY 4.0 互換）
+  <https://www.mlit.go.jp/link.html>。**出典表示**＋**加工明示**が条件。
+- ⚠️ **第三者権利**: 道路線形（GeoJSONタイルの形状）は「デジタル道路地図（DRM）」等の第三者権利データに
+  由来する可能性があり、その場合PDL1.0の適用外。再配布・商用利用・ベクトルタイル配信（＝形状の公衆送信）時は
+  形状データの権利元・利用条件を要確認（配信形態を問わずベクトルタイルは形状を再配布するため回避不可）。
 - 関連リポジトリ: <https://github.com/shiwaku/road-traffic-census-map-2021> /
   <https://github.com/shiwaku/road-traffic-census-map-2015>
 

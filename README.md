@@ -165,7 +165,12 @@ mlit-road-traffic-census-converter/
 - 令和3年度: 箇所別基本表 <https://www.mlit.go.jp/road/census/r3/index.html> /
   可視化ツール <https://www.mlit.go.jp/road/ir/ir-data/census_visualizationR3/index.html>
 - 平成27年度: 可視化ツール <https://www.mlit.go.jp/road/ir/ir-data/census_visualization2/index.html>
-- 元データのライセンス: 政府標準利用規約（第2.0版）準拠 <https://www.mlit.go.jp/link.html>
+- 元データのライセンス: 国土交通省ウェブサイトの利用ルール ＝ **公共データ利用規約（第1.0版・PDL1.0）**（CC BY 4.0 互換）
+  <https://www.mlit.go.jp/link.html>。利用時は **出典表示**（例:「出典：国土交通省ウェブサイト（URL）」）と、
+  加工した場合は **加工した旨の明示** が必要（国が作成したかのような態様での公表は不可）。
+- ⚠️ **第三者権利の注意**: 道路線形（GeoJSONタイルの形状データ）は「デジタル道路地図（DRM）」等、
+  第三者が権利を持つデータに由来する可能性があり、その場合PDL1.0の適用外。再配布・商用利用・ベクトルタイル配信
+  （＝形状データの公衆送信）を行う場合は、形状データの権利元・利用条件を必ず確認すること。
 - 関連: <https://github.com/shiwaku/road-traffic-census-map-2021> /
   <https://github.com/shiwaku/road-traffic-census-map-2015>
 
