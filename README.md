@@ -52,15 +52,32 @@ python run.py --year h27 --step all
 | export | `export.py` | fgb / parquet / pmtiles 変換 | crs / output_basename |
 | verify | `verify.py` | 紐づけ率・孤児タイル点検（オフライン） | — |
 
-## 成果物のサイズについて
+## 成果物
 
-出力GeoJSONのサイズは年度で大きく異なる（例: R03 ≈ 1.4GB、H27 ≈ 4.3GB）。
-これは**元データの線分分割の細かさ**の違いによる。H27の元GeoJSONは LineString 優勢で
-1区間が多数の線分に分割されており（1区間あたり約6本）、紐づけ時に同じ属性が線分ごとに
-複製されるためファイルが膨らむ。区間数・情報量はむしろR03の方が多い。詳細は
-[DESIGN.md 3.2](DESIGN.md) を参照。
+各年度のパイプライン実行で `data/{year}/output/` に以下を生成する（`data/` は .gitignore 対象＝GitHubには非公開）。
 
-> サイズに効くのは GeoJSON / GeoParquet のみ。PMTiles は tippecanoe が結合・簡略化するため影響は小さい。
+| 年度 | 形式 | ファイル名 | サイズ | 用途 |
+|---|---|---|---|---|
+| R03 | GeoJSON | `traffic_census_2021_converted.geojson` | 1.4GB | 汎用・中間 |
+| R03 | GeoParquet | `traffic_census_2021_converted.parquet` | 95MB | QGIS・分析 |
+| R03 | PMTiles | `traffic_census_2021_converted.pmtiles` | 655MB | MapLibre配信 |
+| H27 | GeoJSON | `traffic_census_2015_converted.geojson` | 4.0GB | 汎用・中間 |
+| H27 | GeoParquet | `traffic_census_2015_converted.parquet` | 111MB | QGIS・分析 |
+| H27 | PMTiles | `traffic_census_2015_converted.pmtiles` | 521MB | MapLibre配信 |
+
+- いずれも箇所別基本表を紐づけ済み（結合率 **100%**）。ファイル名の接尾辞は `output_suffix`（既定 `converted`）。
+- **PMTiles** は `tippecanoe -Z4 -z14 -pk -pf`（`--no-tile-size-limit` / `--no-feature-limit`）で生成し、
+  **featureを間引かず全保持**する（`--drop-densest-as-needed` は使わない）。
+- 検証記録は [VERIFICATION.md](VERIFICATION.md)。R03は全件監査で実DL漏れ3件を回収済み。
+
+### 成果物サイズが年度で異なる理由
+
+出力GeoJSON/GeoParquetのサイズは年度で大きく異なる（H27 ≫ R03）。これは**元データの線分分割の細かさ**による。
+H27の元GeoJSONは LineString 優勢で1区間が多数の線分に分割されており（1区間あたり約6本、R03は約1.3本）、
+紐づけ時に同じ属性が線分ごとに複製されるためファイルが膨らむ。区間数・情報量はむしろR03の方が多い。
+詳細は [DESIGN.md 3.2](DESIGN.md) を参照。
+
+> サイズに効くのは GeoJSON / GeoParquet。PMTiles は tippecanoe がズームごとに簡略化するため相対的に小さい。
 
 ## 新年度の追加（例: R07）
 
