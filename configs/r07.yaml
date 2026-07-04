@@ -1,0 +1,33 @@
+# R07（令和7年度）テンプレート
+# 令和7年度は同形式（可視化ツールのGeoJSON配布）で公開される見込み。
+# 公開後、以下の TODO を実データで確認して確定すること。
+year: r07
+label: 令和7年度
+output_basename: traffic_census_2025
+
+# --- ダウンロード ---
+# TODO: 実URLを確認（census_visualizationR7 と推定）
+geojson_url_base: https://www.mlit.go.jp/road/ir/ir-data/census_visualizationR7
+# TODO: 箇所別基本表CSVのURLを確認（road/census/r7/... と推定）
+kasho_csv_url_template: https://www.mlit.go.jp/road/census/r7/data/csv/kasyo{ken}.csv
+road_types: [drm10, drm20, drm31, drm32, drm40_50, drm60_70]
+tileindex: configs/tileindex/tileindex_zoomlevel_12.csv   # TODO: ズームレベル要確認
+ken_code_list: configs/tileindex/KenCodeList.csv
+request_timeout: [3.0, 5.0]
+request_sleep: 0.1
+
+# --- 箇所別基本表CSVの結合 ---
+key_column: 交通調査基本区間番号
+key_zfill: 0                       # TODO: 元CSVの桁を確認して要否判断
+csv_encodings: [utf-8, shift-jis, cp932]
+
+# --- コード→ラベル変換・型キャスト ---
+# TODO: R07の列名・コード体系を確認して mappings / schema を作成
+mappings: configs/mappings/r07_mappings.yaml
+schema_csv: configs/schema/r07_schema.csv
+
+# --- GeoJSONへの紐づけ ---
+geojson_key_property: census
+
+# --- 出力 ---
+crs: null
