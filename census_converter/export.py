@@ -41,33 +41,20 @@ def to_parquet(cfg: Config, src_geojson: str | None = None) -> str:
     return dst
 
 
-# PMTiles生成プロファイル
-#   a: 混雑タイルでfeatureを間引く（軽量・俯瞰で欠落あり）＝既定
-#   b: -pk(--no-tile-size-limit) -pf(--no-feature-limit) で上限撤廃し全feature保持（間引きなし）
-PMTILES_PROFILES = {
-    "a": {"suffix": "", "flags": ["--drop-densest-as-needed"]},
-    "b": {"suffix": "_full", "flags": ["-pk", "-pf"]},
-}
-
-
 def to_pmtiles(cfg: Config, src_geojson: str | None = None,
-               min_zoom: int = 4, max_zoom: int = 14, profile: str = "a") -> str:
+               min_zoom: int = 4, max_zoom: int = 14) -> str:
+    """PMTilesを生成。-pk(--no-tile-size-limit) -pf(--no-feature-limit) で上限を撤廃し、
+    全featureを間引かずに保持する（--drop-densest-as-needed は使わない）。"""
     if not shutil.which("tippecanoe"):
         raise RuntimeError("tippecanoe が見つかりません")
-    if profile not in PMTILES_PROFILES:
-        raise ValueError(f"未知のPMTilesプロファイル: {profile}（a|b）")
-    prof = PMTILES_PROFILES[profile]
     src = src_geojson or cfg.output_geojson
-    dst = os.path.join(
-        cfg.output_dir,
-        f"{cfg.output_basename}_{cfg.output_suffix}{prof['suffix']}.pmtiles")
+    dst = os.path.join(cfg.output_dir, f"{cfg.output_basename}_{cfg.output_suffix}.pmtiles")
     _run(["tippecanoe", "-o", dst, "-Z", str(min_zoom), "-z", str(max_zoom),
-          "-l", cfg.output_basename, *prof["flags"], "--force", src])
+          "-l", cfg.output_basename, "-pk", "-pf", "--force", src])
     return dst
 
 
-def run(cfg: Config, formats: tuple[str, ...] = ("parquet", "pmtiles"),
-        pmtiles_profiles: tuple[str, ...] = ("a",)) -> None:
+def run(cfg: Config, formats: tuple[str, ...] = ("parquet", "pmtiles")) -> None:
     ensure_dirs(cfg)
     if "fgb" in formats:
         print("[export] FlatGeobuf 生成", flush=True)
@@ -76,7 +63,6 @@ def run(cfg: Config, formats: tuple[str, ...] = ("parquet", "pmtiles"),
         print("[export] GeoParquet 生成", flush=True)
         to_parquet(cfg)
     if "pmtiles" in formats:
-        for prof in pmtiles_profiles:
-            print(f"[export] PMTiles 生成（profile {prof}）", flush=True)
-            to_pmtiles(cfg, profile=prof)
+        print("[export] PMTiles 生成（-pk -pf 全feature保持）", flush=True)
+        to_pmtiles(cfg)
     print("[export] 完了", flush=True)

@@ -21,8 +21,7 @@ STEPS = ["download", "merge", "normalize", "mergecsv", "transform", "join", "exp
 ALL_PIPELINE = ["download", "merge", "normalize", "mergecsv", "transform", "join", "export", "verify"]
 
 
-def run_step(name: str, cfg: config.Config, formats: tuple[str, ...],
-             pmtiles_profiles: tuple[str, ...] = ("a",)) -> None:
+def run_step(name: str, cfg: config.Config, formats: tuple[str, ...]) -> None:
     print(f"\n===== [{cfg.year}] step: {name} =====", flush=True)
     if name == "download":
         download.run(cfg)
@@ -37,7 +36,7 @@ def run_step(name: str, cfg: config.Config, formats: tuple[str, ...],
     elif name == "join":
         join.run(cfg)
     elif name == "export":
-        export.run(cfg, formats=formats, pmtiles_profiles=pmtiles_profiles)
+        export.run(cfg, formats=formats)
     elif name == "verify":
         verify.run(cfg)
     else:
@@ -51,8 +50,6 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"実行ステップ（カンマ区切り、または all）。選択肢: {','.join(STEPS)}")
     ap.add_argument("--formats", default="fgb,parquet",
                     help="export形式（fgb,parquet,pmtiles）")
-    ap.add_argument("--pmtiles-profiles", default="a",
-                    help="PMTilesプロファイル（カンマ区切り）。a=間引きあり(既定) / b=全feature保持(-pk -pf)")
     ap.add_argument("--data-root", default=None, help="作業ルート（既定: ./data）")
     args = ap.parse_args(argv)
 
@@ -64,11 +61,10 @@ def main(argv: list[str] | None = None) -> int:
     if bad:
         ap.error(f"未知のステップ: {bad}")
     formats = tuple(s.strip() for s in args.formats.split(",") if s.strip())
-    pmtiles_profiles = tuple(s.strip() for s in args.pmtiles_profiles.split(",") if s.strip())
 
     print(f"対象: {cfg.label} ({cfg.year})  作業ディレクトリ: {cfg.data_dir}")
     for s in steps:
-        run_step(s, cfg, formats, pmtiles_profiles)
+        run_step(s, cfg, formats)
     print("\n完了。")
     return 0
 
