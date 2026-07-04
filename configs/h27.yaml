@@ -6,6 +6,8 @@ output_basename: traffic_census_2015
 # 注: H27 可視化ツールのエンドポイントは census_visualization2
 geojson_url_base: https://www.mlit.go.jp/road/ir/ir-data/census_visualization2
 kasho_csv_url_template: https://www.mlit.go.jp/road/census/h27/data/csv/kasyo{ken}.csv
+# 時間帯別交通量表（拡張・任意）。DESIGN.md §8 参照。空/未設定ならDLしない。
+jikantai_csv_url_template: https://www.mlit.go.jp/road/census/h27/data/csv/zkntrf{ken}.csv
 road_types: [drm10, drm20, drm31, drm32, drm40_50, drm60_70]
 tileindex: configs/tileindex/tileindex_zoomlevel_12.csv
 ken_code_list: configs/tileindex/KenCodeList.csv

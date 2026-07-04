@@ -5,6 +5,8 @@ output_basename: traffic_census_2021
 # --- ダウンロード（方式A: 可視化ツールのGeoJSON直DL） ---
 geojson_url_base: https://www.mlit.go.jp/road/ir/ir-data/census_visualizationR3
 kasho_csv_url_template: https://www.mlit.go.jp/road/census/r3/data/csv/kasyo{ken}.csv
+# 時間帯別交通量表（拡張・任意）。DESIGN.md §8 参照。空/未設定ならDLしない。
+jikantai_csv_url_template: https://www.mlit.go.jp/road/census/r3/data/csv/zkntrf{ken}.csv
 road_types: [drm10, drm20, drm31, drm32, drm40_50, drm60_70]
 tileindex: configs/tileindex/tileindex_zoomlevel_12.csv   # 列順 x,y,z（ヘッダなし）
 ken_code_list: configs/tileindex/KenCodeList.csv          # 1列目=都道府県コード（ヘッダあり）

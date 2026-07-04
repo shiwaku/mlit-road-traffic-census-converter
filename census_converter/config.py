@@ -21,6 +21,7 @@ class Config:
     # download
     geojson_url_base: str
     kasho_csv_url_template: str
+    jikantai_csv_url_template: str | None
     road_types: list[str]
     tileindex: str
     ken_code_list: str
@@ -46,6 +47,14 @@ class Config:
 
     @property
     def csv_dir(self) -> str: return os.path.join(self.data_dir, "csv")
+
+    # 箇所別基本表 kasyo{NN}.csv（csv/kasho/）
+    @property
+    def kasho_dir(self) -> str: return os.path.join(self.csv_dir, "kasho")
+
+    # 時間帯別交通量表 zkntrf{NN}.csv（csv/jikantai/。スキーマが別のため分離）
+    @property
+    def jikantai_dir(self) -> str: return os.path.join(self.csv_dir, "jikantai")
 
     @property
     def work_dir(self) -> str: return os.path.join(self.data_dir, "work")
@@ -109,6 +118,7 @@ def load_config(year: str, data_root: str | None = None) -> Config:
         output_basename=raw.get("output_basename", f"traffic_census_{raw['year']}"),
         geojson_url_base=raw["geojson_url_base"].rstrip("/"),
         kasho_csv_url_template=raw["kasho_csv_url_template"],
+        jikantai_csv_url_template=raw.get("jikantai_csv_url_template"),
         road_types=raw["road_types"],
         tileindex=_resolve(raw["tileindex"]),
         ken_code_list=_resolve(raw["ken_code_list"]),
@@ -127,5 +137,5 @@ def load_config(year: str, data_root: str | None = None) -> Config:
 
 
 def ensure_dirs(cfg: Config) -> None:
-    for d in (cfg.tiles_dir, cfg.csv_dir, cfg.work_dir, cfg.output_dir):
+    for d in (cfg.tiles_dir, cfg.kasho_dir, cfg.jikantai_dir, cfg.work_dir, cfg.output_dir):
         os.makedirs(d, exist_ok=True)

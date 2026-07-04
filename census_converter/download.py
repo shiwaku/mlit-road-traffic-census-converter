@@ -80,7 +80,7 @@ def download_kasho_csv(cfg: Config, skip_existing: bool = True) -> dict[str, int
     sess = requests.Session()
     stat = {"saved": 0, "skip": 0, "error": 0}
     for code in codes:
-        dest = os.path.join(cfg.csv_dir, f"kasyo{code}.csv")
+        dest = os.path.join(cfg.kasho_dir, f"kasyo{code}.csv")
         if skip_existing and os.path.exists(dest):
             stat["skip"] += 1
             continue
@@ -102,6 +102,42 @@ def download_kasho_csv(cfg: Config, skip_existing: bool = True) -> dict[str, int
     return stat
 
 
+def download_jikantai_csv(cfg: Config, skip_existing: bool = True) -> dict[str, int]:
+    """時間帯別交通量表CSVを都道府県コードごとに取得（拡張・任意）。
+
+    config に jikantai_csv_url_template が無ければ何もしない。DESIGN.md §8 参照。
+    箇所別基本表(csv/)とはスキーマが異なるため、別ディレクトリ jikantai/ に保存する。
+    """
+    if not cfg.jikantai_csv_url_template:
+        return {"saved": 0, "skip": 0, "error": 0}
+    ensure_dirs(cfg)
+    codes = _read_ken_codes(cfg.ken_code_list)
+    sess = requests.Session()
+    stat = {"saved": 0, "skip": 0, "error": 0}
+    for code in codes:
+        dest = os.path.join(cfg.jikantai_dir, f"zkntrf{code}.csv")
+        if skip_existing and os.path.exists(dest) and os.path.getsize(dest) > 0:
+            stat["skip"] += 1
+            continue
+        url = cfg.jikantai_csv_url_template.format(ken=code)
+        try:
+            r = sess.get(url, timeout=cfg.request_timeout)
+            time.sleep(cfg.request_sleep)
+            if r.status_code == 200:
+                with open(dest, "wb") as w:
+                    w.write(r.content)
+                stat["saved"] += 1
+            else:
+                stat["error"] += 1
+                print(f"  警告: zkntrf{code}.csv -> HTTP {r.status_code}", flush=True)
+        except RequestException as e:
+            stat["error"] += 1
+            print(f"  警告: zkntrf{code}.csv -> {e}", flush=True)
+    print(f"[download_jikantai_csv] {stat}", flush=True)
+    return stat
+
+
 def run(cfg: Config) -> None:
     download_geojson(cfg)
     download_kasho_csv(cfg)
+    download_jikantai_csv(cfg)

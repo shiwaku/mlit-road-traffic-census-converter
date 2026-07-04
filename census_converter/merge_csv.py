@@ -26,9 +26,9 @@ def _read_any(path: str, encodings: list[str]) -> pd.DataFrame | None:
 
 def run(cfg: Config) -> str:
     ensure_dirs(cfg)
-    files = sorted(glob.glob(os.path.join(cfg.csv_dir, "*.csv")))
+    files = sorted(glob.glob(os.path.join(cfg.kasho_dir, "*.csv")))
     if not files:
-        raise FileNotFoundError(f"箇所別基本表CSVが見つかりません: {cfg.csv_dir}")
+        raise FileNotFoundError(f"箇所別基本表CSVが見つかりません: {cfg.kasho_dir}")
 
     frames = []
     for fp in files:

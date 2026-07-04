@@ -39,14 +39,26 @@ python run.py --year h27 --step all
 
 成果物は `data/{year}/output/` に出力される（`data/` は .gitignore 対象）。
 
+### 個別ダウンロードスクリプト（`scripts/`）
+
+`--step download` は3種（GeoJSONタイル・箇所別基本表・時間帯別交通量表）をまとめて取得するが、
+種別ごとに取り直したい場合は `scripts/` の単体スクリプトを使う（ロジックは `download.py` に一本化した薄いラッパー）。
+
+```bash
+python scripts/download_geojson_tiles.py --year r03   # → data/r03/geojson_tiles/
+python scripts/download_kasho_csv.py     --year r03   # → data/r03/csv/kasho/
+python scripts/download_jikantai_csv.py  --year r03   # → data/r03/csv/jikantai/
+# --force で既存ファイルも再取得
+```
+
 ## パイプライン
 
 | ステップ | モジュール | 処理 | 年度依存(config) |
 |---|---|---|---|
-| download | `download.py` | GeoJSONタイル + 箇所別基本表CSV を取得 | URL / タイル / 道路種別 / 県コード |
+| download | `download.py` | GeoJSONタイル + 箇所別基本表CSV + 時間帯別交通量表CSV を取得 | URL / タイル / 道路種別 / 県コード |
 | merge | `merge_geojson.py` | 分割GeoJSONを1ファイルに結合 | — |
 | normalize | `normalize_geometry.py` | LineString→MultiLineString統一 | — |
-| mergecsv | `merge_csv.py` | 県別CSV結合（文字コード自動判定・空行除去・キー0埋め） | key_zfill |
+| mergecsv | `merge_csv.py` | 箇所別基本表CSV（`csv/kasho/`）を結合（文字コード自動判定・空行除去・キー0埋め） | key_zfill |
 | transform | `transform_csv.py` | コード→ラベル変換 + 型キャスト | mappings / schema |
 | join | `join.py` | `census` ⇔ `交通調査基本区間番号` で属性結合 | key列 / geojson_key_property |
 | export | `export.py` | fgb / parquet / pmtiles 変換 | crs / output_basename |
@@ -70,6 +82,13 @@ python run.py --year h27 --step all
   **featureを間引かず全保持**する（`--drop-densest-as-needed` は使わない）。
 - 検証記録は [VERIFICATION.md](VERIFICATION.md)。R03は全件監査で実DL漏れ3件を回収済み。
 
+### QGIS 主題図スタイル（QML）
+
+GeoParquet を QGIS で主題図表示するための QML を [`configs/qgis_styles/`](configs/qgis_styles/) に用意。
+[road-traffic-census-map-2021](https://github.com/shiwaku/road-traffic-census-map-2021) ビューワの
+**5種類**（24時間交通量 / 混雑度 / 大型車混入率 / 混雑時旅行速度 / 昼間非混雑時旅行速度）に色分けを合わせている。
+QGISでレイヤ→シンボロジ→「スタイルを読み込む」で `.qml` を適用（詳細は同フォルダのREADME）。
+
 ### 成果物サイズが年度で異なる理由
 
 出力GeoJSON/GeoParquetのサイズは年度で大きく異なる（H27 ≫ R03）。これは**元データの線分分割の細かさ**による。
@@ -89,12 +108,51 @@ H27の元GeoJSONは LineString 優勢で1区間が多数の線分に分割され
 ## ディレクトリ構成
 
 ```
-census_converter/     共通エンジン（年度非依存）
-configs/              年度別config・mappings・schema・tileindex
-run.py                CLI
-data/                 作業・成果物（.gitignore）
-legacy: 既存の「H27/R03 …」フォルダは旧コンバーターの保全（.gitignore）
+mlit-road-traffic-census-converter/
+├── README.md                 … 本ファイル
+├── DESIGN.md                 … 設計書（§8: 時間帯別交通量表の連携検討）
+├── VERIFICATION.md           … 完全性・紐づけ検証レポート
+├── LICENSE                   … MIT（ソースコード）
+├── requirements.txt
+├── run.py                    … CLI（python run.py --year r03 --step all）
+│
+├── census_converter/         … 共通エンジン（年度非依存）
+│   ├── config.py             … 年度config読込・作業パス解決
+│   ├── download.py           … GeoJSONタイル / 箇所別基本表 / 時間帯別交通量表 のDL
+│   ├── merge_geojson.py      … 分割GeoJSON結合
+│   ├── normalize_geometry.py … LineString→MultiLineString統一
+│   ├── merge_csv.py          … 箇所別基本表CSV結合（csv/kasho/）
+│   ├── transform_csv.py      … コード→ラベル変換・型キャスト
+│   ├── join.py               … census⇔交通調査基本区間番号 で属性結合
+│   ├── export.py             … GeoParquet / PMTiles / FlatGeobuf 変換
+│   └── verify.py             … 紐づけ率・孤児タイル点検（オフライン）
+│
+├── configs/                  … 年度ごとの差分
+│   ├── h27.yaml / r03.yaml / r07.yaml
+│   ├── mappings/             … コード→ラベル辞書
+│   ├── schema/               … 年度別 項目名と型（Name,TypeName）
+│   ├── tileindex/            … tileindex_zoomlevel_12.csv / KenCodeList.csv
+│   └── qgis_styles/          … QGIS主題図QML（5種）＋generate_qml.py
+│
+├── scripts/                  … 個別ダウンロードスクリプト（download.py の薄いラッパー）
+│   ├── download_geojson_tiles.py
+│   ├── download_kasho_csv.py
+│   └── download_jikantai_csv.py
+│
+└── data/                     … 入力・中間・成果物（.gitignore。詳細は data/README.md）
+    └── {r03,h27}/
+        ├── geojson_tiles/    … 【入力】分割GeoJSON
+        ├── csv/
+        │   ├── kasho/        … 【入力】箇所別基本表 kasyo{NN}.csv
+        │   └── jikantai/     … 【入力】時間帯別交通量表 zkntrf{NN}.csv
+        ├── work/             … 【中間】結合・正規化・変換の途中生成物
+        └── output/           … 【成果物】traffic_census_{YYYY}_converted.*
+
+（旧「H27… / R03… 」フォルダは旧コンバーターの保全用。.gitignore で追跡外）
 ```
+
+> 時間帯別交通量表（`csv/jikantai/`）をジオメトリに紐づけ、Webマップで時間帯別グラフを表示する
+> 拡張の検討は [DESIGN.md §8](DESIGN.md) を参照。
 
 ## ライセンス
 
