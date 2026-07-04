@@ -34,13 +34,15 @@ def qcolor(rgb: tuple[int, int, int]) -> str:
 
 
 def line_symbol(name: str, rgb: tuple[int, int, int], width_mm: float,
-                width_expr: str | None = None) -> str:
-    """SimpleLine シンボル1個のXML。width_expr指定時はデータ定義で線幅を上書き。"""
+                width_expr: str | None = None, level: int = 0) -> str:
+    """SimpleLine シンボル1個のXML。width_expr指定時はデータ定義で線幅を上書き。
+    level は symbol levels 有効時の描画順（pass）。大きいほど後＝前面に描画される。"""
     dd = ""
     if width_expr:
         dd = f"""
         <data_defined_properties>
           <Option type="Map">
+            <Option name="name" type="QString" value=""/>
             <Option name="properties" type="Map">
               <Option name="line_width" type="Map">
                 <Option name="active" type="bool" value="true"/>
@@ -52,7 +54,7 @@ def line_symbol(name: str, rgb: tuple[int, int, int], width_mm: float,
           </Option>
         </data_defined_properties>"""
     return f"""      <symbol name="{name}" type="line" alpha="1" clip_to_extent="1" frame_rate="10" force_rhr="0" is_animated="0">
-        <layer class="SimpleLine" enabled="1" locked="0" pass="0">
+        <layer class="SimpleLine" enabled="1" locked="0" pass="{level}">
           <Option type="Map">
             <Option name="align_dash_pattern" type="QString" value="0"/>
             <Option name="capstyle" type="QString" value="round"/>
@@ -129,6 +131,43 @@ def rule_qml(rules: list[tuple[str, tuple[int, int, int], str]], width_expr: str
 """
 
 
+def rule_qml_nested(groups: list[tuple[str, str, tuple[int, int, int]]],
+                    bins: list[tuple[str, str, float]]) -> str:
+    """入れ子RuleRenderer。groups=[(親ラベル, 親filter=色分類, rgb)]、
+    bins=[(子ラベル, 子filter=幅分類, width_mm)]。各葉に静的な色・幅のシンボルを割当てる
+    （データ定義に依存せず確実に線幅が変わる）。色=親グループ / 幅=子ビン。"""
+    rules_xml, syms_xml = [], []
+    idx = 0
+    ng = len(groups)
+    for gi, (glab, gfilt, rgb) in enumerate(groups):
+        # symbol levels: 道路種別クラスが高いグループ(=groups先頭)ほど level を大きくし前面に描画。
+        # groups は高位クラス順(高速→…→市道)に並べる前提。level = ng-1-gi。
+        level = ng - 1 - gi
+        child_xml = []
+        for bi, (blab, bfilt, wmm) in enumerate(bins):
+            child_xml.append(
+                f'        <rule key="{{r{gi}_{idx}}}" symbol="{idx}" '
+                f'filter="{esc(bfilt)}" label="{esc(blab)}"/>')
+            syms_xml.append(line_symbol(str(idx), rgb, wmm, level=level))
+            idx += 1
+        rules_xml.append(
+            f'      <rule key="{{g{gi}}}" filter="{esc(gfilt)}" label="{esc(glab)}">\n'
+            + "\n".join(child_xml) + "\n      </rule>")
+    return f"""<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
+<qgis version="{QGIS_VERSION}" styleCategories="Symbology">
+  <renderer-v2 type="RuleRenderer" symbollevels="1" enableorderby="0" forceraster="0" referencescale="-1">
+    <rules key="{{root}}">
+{chr(10).join(rules_xml)}
+    </rules>
+    <symbols>
+{chr(10).join(syms_xml)}
+    </symbols>
+  </renderer-v2>
+  <layerGeometryType>1</layerGeometryType>
+</qgis>
+"""
+
+
 # 色定義
 GREEN = (0, 152, 0)
 YELLOW = (255, 210, 0)
@@ -154,36 +193,38 @@ def q(f):  # 式内のフィールド参照
 
 
 def speed_attr(up, dn):
-    return f'least(coalesce({q(up)}, {BIG}), coalesce({q(dn)}, {BIG}))'
+    # QGISの式関数は min()/max()（least()/greatest() は存在せず「式が不正です」になる）
+    return f'min(coalesce({q(up)}, {BIG}), coalesce({q(dn)}, {BIG}))'
 
 
 def main():
     files = {}
 
-    # 1) 24時間交通量: 色=道路種別 / 線幅=交通量6段階
-    width_expr = (
-        f'CASE '
-        f'WHEN {q(F_24H)} < 5000 THEN 0.3 '
-        f'WHEN {q(F_24H)} < 10000 THEN 0.6 '
-        f'WHEN {q(F_24H)} < 20000 THEN 1.2 '
-        f'WHEN {q(F_24H)} < 40000 THEN 2.4 '
-        f'WHEN {q(F_24H)} < 80000 THEN 3.6 '
-        f'ELSE 4.8 END'
-    )
-    nn = f'{q(F_24H)} IS NOT NULL'
-    rules = [
-        (f'{q(F_ROADTYPE)} = \'3：一般国道\' AND {q(F_KANRI)} <> \'1：国土交通大臣\' AND {nn}',
-         (255, 0, 255), '一般国道（直轄外）'),
-        (f'{q(F_ROADTYPE)} = \'3：一般国道\' AND {q(F_KANRI)} = \'1：国土交通大臣\' AND {nn}',
-         (255, 7, 7), '一般国道（直轄）'),
-        (f'{q(F_ROADTYPE)} = \'1：高速自動車国道\' AND {nn}', (0, 0, 255), '高速自動車国道'),
-        (f'{q(F_ROADTYPE)} = \'2：都市高速道路\' AND {nn}', (0, 0, 119), '都市高速道路'),
-        (f'{q(F_ROADTYPE)} IN (\'4：主要地方道（都道府県道）\',\'5：主要地方道（指定市市道）\') AND {nn}',
-         (0, 116, 0), '主要地方道'),
-        (f'{q(F_ROADTYPE)} IN (\'6：一般都道府県道\',\'7：指定市の一般市道\') AND {nn}',
-         (116, 0, 0), '一般都道府県道・市道'),
+    # 1) 24時間交通量: 色=道路種別（親ルール） / 線幅=交通量6段階（子ルール・静的幅）
+    #    ※ data-defined 線幅はQGISの Load Style で適用されないため、幅は静的値を持つ
+    #      入れ子ルールで表現する（色×幅=6×6のシンボル）。
+    V = q(F_24H)
+    road_groups = [
+        ('高速自動車国道', f"{q(F_ROADTYPE)} = '1：高速自動車国道'", (0, 0, 255)),
+        ('都市高速道路', f"{q(F_ROADTYPE)} = '2：都市高速道路'", (0, 0, 119)),
+        ('一般国道（直轄）', f"{q(F_ROADTYPE)} = '3：一般国道' AND {q(F_KANRI)} = '1：国土交通大臣'",
+         (255, 7, 7)),
+        ('一般国道（直轄外）', f"{q(F_ROADTYPE)} = '3：一般国道' AND {q(F_KANRI)} <> '1：国土交通大臣'",
+         (255, 0, 255)),
+        ('主要地方道', f"{q(F_ROADTYPE)} IN ('4：主要地方道（都道府県道）','5：主要地方道（指定市市道）')",
+         (0, 116, 0)),
+        ('一般都道府県道・市道', f"{q(F_ROADTYPE)} IN ('6：一般都道府県道','7：指定市の一般市道')",
+         (116, 0, 0)),
     ]
-    files["traffic_census_2021_1_24jikankotsuryo.qml"] = rule_qml(rules, width_expr)
+    vol_bins = [
+        ('〜5千台', f"{V} < 5000", 0.3),
+        ('5千〜1万台', f"{V} >= 5000 AND {V} < 10000", 0.6),
+        ('1万〜2万台', f"{V} >= 10000 AND {V} < 20000", 1.2),
+        ('2万〜4万台', f"{V} >= 20000 AND {V} < 40000", 2.4),
+        ('4万〜8万台', f"{V} >= 40000 AND {V} < 80000", 3.6),
+        ('8万台〜', f"{V} >= 80000", 4.8),
+    ]
+    files["traffic_census_2021_1_24jikankotsuryo.qml"] = rule_qml_nested(road_groups, vol_bins)
 
     # 2) 混雑度（フィールド分類）
     files["traffic_census_2021_2_konzatsudo.qml"] = graduated_qml(F_KONZATSUDO, [

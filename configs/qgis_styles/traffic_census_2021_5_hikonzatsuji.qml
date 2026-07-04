@@ -1,6 +1,6 @@
 <!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>
 <qgis version="3.34.0" styleCategories="Symbology">
-  <renderer-v2 type="graduatedSymbol" attr="least(coalesce(&quot;昼間（非混雑時）／上り／旅行速度／合計（ｋｍ／ｈ）&quot;, 999999.0), coalesce(&quot;昼間（非混雑時）／下り／旅行速度／合計（ｋｍ／ｈ）&quot;, 999999.0))" graduatedMethod="GraduatedColor" symbollevels="0" enableorderby="0" forceraster="0" referencescale="-1">
+  <renderer-v2 type="graduatedSymbol" attr="min(coalesce(&quot;昼間（非混雑時）／上り／旅行速度／合計（ｋｍ／ｈ）&quot;, 999999.0), coalesce(&quot;昼間（非混雑時）／下り／旅行速度／合計（ｋｍ／ｈ）&quot;, 999999.0))" graduatedMethod="GraduatedColor" symbollevels="0" enableorderby="0" forceraster="0" referencescale="-1">
     <ranges>
       <range lower="0.000000" upper="10.000000" render="true" symbol="0" label="0 – 10 km/h"/>
       <range lower="10.000000" upper="20.000000" render="true" symbol="1" label="10 – 20 km/h"/>
