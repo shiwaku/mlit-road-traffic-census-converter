@@ -52,6 +52,16 @@ python run.py --year h27 --step all
 | export | `export.py` | fgb / parquet / pmtiles 変換 | crs / output_basename |
 | verify | `verify.py` | 紐づけ率・孤児タイル点検（オフライン） | — |
 
+## 成果物のサイズについて
+
+出力GeoJSONのサイズは年度で大きく異なる（例: R03 ≈ 1.4GB、H27 ≈ 4.3GB）。
+これは**元データの線分分割の細かさ**の違いによる。H27の元GeoJSONは LineString 優勢で
+1区間が多数の線分に分割されており（1区間あたり約6本）、紐づけ時に同じ属性が線分ごとに
+複製されるためファイルが膨らむ。区間数・情報量はむしろR03の方が多い。詳細は
+[DESIGN.md 3.2](DESIGN.md) を参照。
+
+> サイズに効くのは GeoJSON / GeoParquet のみ。PMTiles は tippecanoe が結合・簡略化するため影響は小さい。
+
 ## 新年度の追加（例: R07）
 
 1. `configs/r07.yaml` の TODO を実データで確認して埋める（URL・タイル・0埋め要否）。

@@ -36,6 +36,8 @@ class Config:
     # join / export
     geojson_key_property: str
     crs: str | None
+    # 出力ファイル名の接尾辞（例: traffic_census_2021_converted）
+    output_suffix: str = "converted"
     # 作業ディレクトリ
     data_dir: str = field(default="")
 
@@ -70,7 +72,7 @@ class Config:
 
     @property
     def output_geojson(self) -> str:
-        return os.path.join(self.output_dir, f"{self.output_basename}_convert.geojson")
+        return os.path.join(self.output_dir, f"{self.output_basename}_{self.output_suffix}.geojson")
 
 
 def load_config(year: str, data_root: str | None = None) -> Config:
@@ -119,6 +121,7 @@ def load_config(year: str, data_root: str | None = None) -> Config:
         schema=schema,
         geojson_key_property=raw.get("geojson_key_property", "census"),
         crs=raw.get("crs"),
+        output_suffix=raw.get("output_suffix", "converted"),
         data_dir=os.path.join(data_root, raw["year"]),
     )
 
