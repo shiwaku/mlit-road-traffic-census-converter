@@ -96,6 +96,11 @@ data/                 作業・成果物（.gitignore）
 legacy: 既存の「H27/R03 …」フォルダは旧コンバーターの保全（.gitignore）
 ```
 
+## ライセンス
+
+- **本リポジトリのソースコード**: [MIT License](LICENSE)
+- **入力・成果物データ**: 元データ（道路交通センサス）のライセンスに従う（下記）。データは本リポジトリに含めない。
+
 ## データ源・ライセンス
 
 - 令和3年度: 箇所別基本表 <https://www.mlit.go.jp/road/census/r3/index.html> /
