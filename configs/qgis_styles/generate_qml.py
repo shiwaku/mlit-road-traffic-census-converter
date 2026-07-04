@@ -11,16 +11,31 @@ import os
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 QGIS_VERSION = "3.34.0"
 
-# フィールド名
+# フィールド名（R03・H27 で共通）
 F_ROADTYPE = "道路種別"
 F_KANRI = "管理区分"
 F_24H = "２４時間自動車類交通量（上下合計）／合計（台）"
 F_KONZATSUDO = "混雑度"
 F_OGATA = "昼間１２時間大型車混入率（％）"
-F_KZ_UP = "朝夕（混雑時）／上り／旅行速度／合計（ｋｍ／ｈ）"
-F_KZ_DN = "朝夕（混雑時）／下り／旅行速度／合計（ｋｍ／ｈ）"
-F_HK_UP = "昼間（非混雑時）／上り／旅行速度／合計（ｋｍ／ｈ）"
-F_HK_DN = "昼間（非混雑時）／下り／旅行速度／合計（ｋｍ／ｈ）"
+
+# 年度差分。旅行速度の列名だけがR03/H27で異なる（道路種別・管理区分のラベル書式や
+# 24時間交通量・混雑度・大型車混入率の列名は両年度で共通）。prefix は出力ファイル名の接頭辞。
+YEARS = {
+    "r03": {
+        "prefix": "traffic_census_2021",
+        "kz_up": "朝夕（混雑時）／上り／旅行速度／合計（ｋｍ／ｈ）",
+        "kz_dn": "朝夕（混雑時）／下り／旅行速度／合計（ｋｍ／ｈ）",
+        "hk_up": "昼間（非混雑時）／上り／旅行速度／合計（ｋｍ／ｈ）",
+        "hk_dn": "昼間（非混雑時）／下り／旅行速度／合計（ｋｍ／ｈ）",
+    },
+    "h27": {
+        "prefix": "traffic_census_2015",
+        "kz_up": "混雑時／上り／旅行速度（ｋｍ／ｈ）",
+        "kz_dn": "混雑時／下り／旅行速度（ｋｍ／ｈ）",
+        "hk_up": "昼間非混雑時／上り／旅行速度（ｋｍ／ｈ）",
+        "hk_dn": "昼間非混雑時／下り／旅行速度（ｋｍ／ｈ）",
+    },
+}
 
 
 def esc(s: str) -> str:
@@ -197,12 +212,14 @@ def speed_attr(up, dn):
     return f'min(coalesce({q(up)}, {BIG}), coalesce({q(dn)}, {BIG}))'
 
 
-def main():
+def build_year(y: dict) -> dict:
+    """1年度分の5主題図QMLを生成して {ファイル名: 内容} を返す。"""
+    pre = y["prefix"]
     files = {}
 
     # 1) 24時間交通量: 色=道路種別（親ルール） / 線幅=交通量6段階（子ルール・静的幅）
     #    ※ data-defined 線幅はQGISの Load Style で適用されないため、幅は静的値を持つ
-    #      入れ子ルールで表現する（色×幅=6×6のシンボル）。
+    #      入れ子ルールで表現する（色×幅=6×6のシンボル）。描画順は道路種別クラス順。
     V = q(F_24H)
     road_groups = [
         ('高速自動車国道', f"{q(F_ROADTYPE)} = '1：高速自動車国道'", (0, 0, 255)),
@@ -224,10 +241,10 @@ def main():
         ('4万〜8万台', f"{V} >= 40000 AND {V} < 80000", 3.6),
         ('8万台〜', f"{V} >= 80000", 4.8),
     ]
-    files["traffic_census_2021_1_24jikankotsuryo.qml"] = rule_qml_nested(road_groups, vol_bins)
+    files[f"{pre}_1_24jikankotsuryo.qml"] = rule_qml_nested(road_groups, vol_bins)
 
     # 2) 混雑度（フィールド分類）
-    files["traffic_census_2021_2_konzatsudo.qml"] = graduated_qml(F_KONZATSUDO, [
+    files[f"{pre}_2_konzatsudo.qml"] = graduated_qml(F_KONZATSUDO, [
         (0.0, 1.0, GREEN, "0 – 1.0"),
         (1.0, 1.25, YELLOW, "1.0 – 1.25"),
         (1.25, 1.75, ORANGE, "1.25 – 1.75"),
@@ -235,7 +252,7 @@ def main():
     ])
 
     # 3) 大型車混入率（フィールド分類）
-    files["traffic_census_2021_3_ogatashakonnyuritsu.qml"] = graduated_qml(F_OGATA, [
+    files[f"{pre}_3_ogatashakonnyuritsu.qml"] = graduated_qml(F_OGATA, [
         (0.0, 10.0, GREEN, "0 – 10 %"),
         (10.0, 15.0, YELLOW, "10 – 15 %"),
         (15.0, 20.0, ORANGE, "15 – 20 %"),
@@ -243,18 +260,22 @@ def main():
     ])
 
     # 4) 混雑時旅行速度
-    files["traffic_census_2021_4_konzatsuji.qml"] = graduated_qml(
-        speed_attr(F_KZ_UP, F_KZ_DN), SPEED_RANGES())
+    files[f"{pre}_4_konzatsuji.qml"] = graduated_qml(
+        speed_attr(y["kz_up"], y["kz_dn"]), SPEED_RANGES())
 
     # 5) 昼間非混雑時旅行速度
-    files["traffic_census_2021_5_hikonzatsuji.qml"] = graduated_qml(
-        speed_attr(F_HK_UP, F_HK_DN), SPEED_RANGES())
+    files[f"{pre}_5_hikonzatsuji.qml"] = graduated_qml(
+        speed_attr(y["hk_up"], y["hk_dn"]), SPEED_RANGES())
 
-    for name, content in files.items():
-        path = os.path.join(OUT_DIR, name)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content)
-        print("生成:", name)
+    return files
+
+
+def main():
+    for year, y in YEARS.items():
+        for name, content in build_year(y).items():
+            with open(os.path.join(OUT_DIR, name), "w", encoding="utf-8") as f:
+                f.write(content)
+            print(f"生成[{year}]:", name)
 
 
 if __name__ == "__main__":

@@ -86,7 +86,8 @@ python scripts/download_jikantai_csv.py  --year r03   # → data/r03/csv/jikanta
 
 GeoParquet を QGIS で主題図表示するための QML を [`configs/qgis_styles/`](configs/qgis_styles/) に用意。
 [road-traffic-census-map-2021](https://github.com/shiwaku/road-traffic-census-map-2021) ビューワの
-**5種類**（24時間交通量 / 混雑度 / 大型車混入率 / 混雑時旅行速度 / 昼間非混雑時旅行速度）に色分けを合わせている。
+**5種類**（24時間交通量 / 混雑度 / 大型車混入率 / 混雑時旅行速度 / 昼間非混雑時旅行速度）に色分けを合わせており、
+**R03（`traffic_census_2021_*`）・H27（`traffic_census_2015_*`）両年度分**を用意（計10ファイル）。
 QGISでレイヤ→シンボロジ→「スタイルを読み込む」で `.qml` を適用（詳細は同フォルダのREADME）。
 
 ### 成果物サイズが年度で異なる理由
