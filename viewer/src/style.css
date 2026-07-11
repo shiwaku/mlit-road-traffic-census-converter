@@ -117,6 +117,16 @@ body {
   display: none;
 }
 
+/* 折りたたみ時はヘッダ内容の幅まで縮める（特に凡例を小さいチップに） */
+#control-panel.collapsed,
+#legend.collapsed {
+  width: auto;
+}
+
+.panel.collapsed .panel-header {
+  padding: 9px 11px;
+}
+
 /* ---------- コントロールパネル ---------- */
 #control-panel {
   top: 12px;
@@ -447,14 +457,12 @@ input[type="range"]::-moz-range-thumb {
     max-width: 320px;
   }
   #legend {
-    width: 180px;
+    width: 172px;
     top: auto;
-    bottom: 30px;
+    /* 右下の出典（ⓘ）と重ならないよう底上げ */
+    bottom: 46px;
     right: 12px;
-    max-height: 46%;
+    max-height: 42%;
   }
-  /* モバイルでは凡例を既定で折りたたみ */
-  #legend.mobile-collapsed .panel-body {
-    display: none;
-  }
+  /* 折りたたみ時はさらにコンパクトに（width:auto は共通ルールで適用済み） */
 }
