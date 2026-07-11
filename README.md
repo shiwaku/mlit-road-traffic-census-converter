@@ -11,6 +11,7 @@ GISデータを整形・クレンジングするコンバーター。
 年度差分は `configs/{year}.yaml` に外出しし、共通エンジンで処理する。
 
 > 設計の詳細は [DESIGN.md](DESIGN.md)、既存データの完全性検証は [VERIFICATION.md](VERIFICATION.md) を参照。
+> 生成した PMTiles を可視化する Web ビューワは [`viewer/`](viewer/README.md)（Vite + TypeScript + MapLibre GL JS）。
 
 ---
 

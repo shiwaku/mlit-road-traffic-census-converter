@@ -1,0 +1,22 @@
+{
+  "name": "mlit-road-traffic-census-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "道路交通センサスマップ（R03/H27）モダンビューワ — MapLibre GL JS + PMTiles",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "maplibre-gl": "^5.6.0",
+    "pmtiles": "^4.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "vite": "^6.3.0",
+    "vite-plugin-pwa": "^1.3.0"
+  }
+}

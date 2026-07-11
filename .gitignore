@@ -7,6 +7,11 @@ H27道路交通センサス（可視化ツール）/
 H27道路交通センサス（国土交通プラットフォーム）/
 R03道路交通センサス（可視化ツール）/
 
+# Node / ビューワ（viewer/）ビルド成果物・依存
+node_modules/
+dist/
+*.local
+
 # Python
 __pycache__/
 *.py[cod]

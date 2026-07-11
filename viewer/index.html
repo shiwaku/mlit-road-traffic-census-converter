@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>道路交通センサスマップ（R03/H27）</title>
+
+    <!-- PWA / モバイル -->
+    <meta name="theme-color" content="#12141b" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="センサスマップ" />
+    <link rel="icon" type="image/png" href="icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <!-- コントロールパネル（年度・テーマ切替・空中写真不透明度）: JS がマウント -->
+    <div id="control-panel" class="panel"></div>
+
+    <!-- 凡例: JS がテーマ連動で描画 -->
+    <div id="legend" class="panel legend"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
