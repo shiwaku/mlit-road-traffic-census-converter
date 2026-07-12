@@ -7,6 +7,7 @@ import { createMap } from './map/createMap.ts';
 import { addAerialPhoto, SEAMLESSPHOTO_LAYER, DEFAULT_AERIAL_OPACITY } from './map/basemap.ts';
 import { addCensusSources } from './map/sources.ts';
 import { renderTheme } from './map/renderTheme.ts';
+import { Highlight } from './map/highlight.ts';
 import { initControlPanel } from './ui/controlPanel.ts';
 import { renderLegend } from './ui/legend.ts';
 import { initPopup } from './ui/popup.ts';
@@ -22,9 +23,12 @@ let currentYear: YearId = DEFAULT_YEAR;
 let currentThemeId = DEFAULT_THEME_ID;
 
 const map = createMap('map');
+const highlight = new Highlight();
 
 function apply(): void {
   renderTheme(map, YEARS[currentYear], THEME_BY_ID[currentThemeId]);
+  // テーマレイヤの再構築後に最前面へ載せ直す（選択状態は保持される）
+  highlight.render(map, YEARS[currentYear]);
   renderLegend(document.getElementById('legend')!, THEME_BY_ID[currentThemeId]);
 }
 
@@ -38,6 +42,8 @@ map.on('load', () => {
     currentYear,
     currentThemeId,
     onYearChange: (id) => {
+      // 年度が変わると区間ジオメトリも変わるため選択を解除
+      highlight.clear(map);
       currentYear = id;
       apply();
     },
@@ -55,5 +61,5 @@ map.on('load', () => {
     },
   });
 
-  initPopup(map, () => YEARS[currentYear]);
+  initPopup(map, () => YEARS[currentYear], highlight);
 });
