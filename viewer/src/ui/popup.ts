@@ -49,15 +49,20 @@ export function initPopup(
   highlight: Highlight,
 ): void {
   let popup: maplibregl.Popup | null = null;
-  // プログラム的に閉じる（＝選択の差し替え）ときに 'close' で解除しないためのガード
-  let suppressClose = false;
+
+  // ユーザーが × で閉じたときのハンドラ。
+  // 差し替え・空地クリックで閉じる際は closePopup が事前に off するので呼ばれない
+  // ＝ close の発火タイミング（同期/非同期）に依存せず選択を打ち消さない。
+  const onUserClose = () => {
+    popup = null;
+    highlight.clear(map);
+  };
 
   const closePopup = () => {
     if (!popup) return;
-    suppressClose = true;
+    popup.off('close', onUserClose);
     popup.remove();
     popup = null;
-    suppressClose = false;
   };
 
   map.on('click', (e) => {
@@ -66,15 +71,17 @@ export function initPopup(
       ? map.queryRenderedFeatures(e.point, { layers })[0]
       : undefined;
 
+    // まず既存ポップアップを閉じる（この時点では選択に触れない）
+    closePopup();
+
     if (!feature) {
-      // 空地クリック → ハイライト解除＋ポップアップを閉じる
+      // 空地クリック → ハイライト解除
       highlight.clear(map);
-      closePopup();
       return;
     }
 
+    // 閉じ終えた後に選択を更新するので、close ハンドラに打ち消される余地がない
     highlight.select(map, feature);
-    closePopup();
     popup = new maplibregl.Popup({
       className: 'census-popup',
       maxWidth: '360px',
@@ -83,10 +90,7 @@ export function initPopup(
       .setLngLat(e.lngLat)
       .setHTML(buildTable(feature.properties as Record<string, unknown>, getYear()))
       .addTo(map);
-    // ユーザーが × で閉じたときもハイライトを解除
-    popup.on('close', () => {
-      if (!suppressClose) highlight.clear(map);
-    });
+    popup.on('close', onUserClose);
   });
 
   for (const id of HIT_LAYER_IDS) {
