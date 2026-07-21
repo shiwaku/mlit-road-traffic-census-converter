@@ -13,12 +13,12 @@ import sys
 
 from census_converter import (
     config, download, merge_geojson, normalize_geometry,
-    merge_csv, transform_csv, join, export, verify,
+    merge_csv, transform_csv, join, export, verify, jikantai,
 )
 
 # ステップ名 -> 実行関数
-STEPS = ["download", "merge", "normalize", "mergecsv", "transform", "join", "export", "verify"]
-ALL_PIPELINE = ["download", "merge", "normalize", "mergecsv", "transform", "join", "export", "verify"]
+STEPS = ["download", "merge", "normalize", "mergecsv", "transform", "join", "export", "jikantai", "verify"]
+ALL_PIPELINE = ["download", "merge", "normalize", "mergecsv", "transform", "join", "export", "jikantai", "verify"]
 
 
 def run_step(name: str, cfg: config.Config, formats: tuple[str, ...]) -> None:
@@ -37,6 +37,8 @@ def run_step(name: str, cfg: config.Config, formats: tuple[str, ...]) -> None:
         join.run(cfg)
     elif name == "export":
         export.run(cfg, formats=formats)
+    elif name == "jikantai":
+        jikantai.run(cfg)
     elif name == "verify":
         verify.run(cfg)
     else:

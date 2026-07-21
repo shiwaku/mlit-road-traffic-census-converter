@@ -450,6 +450,63 @@ input[type="range"]::-moz-range-thumb {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- ポップアップ内 時間帯別グラフ ---------- */
+.popup-chart {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.popup-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--fg-dim);
+  margin-bottom: 4px;
+}
+
+.popup-chart-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.popup-chart-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.popup-chart-legend i:not(:first-child) {
+  margin-left: 6px;
+}
+
+.popup-chart-svg {
+  display: block;
+  color: var(--fg);
+}
+
+.popup-chart-note {
+  font-size: 10px;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.popup-chart-loading,
+.popup-chart-empty {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--fg-dim);
+}
+
 /* ---------- レスポンシブ（スマホ） ---------- */
 @media (max-width: 640px) {
   #control-panel {

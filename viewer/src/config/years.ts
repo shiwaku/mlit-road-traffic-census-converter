@@ -22,6 +22,20 @@ export interface PopupField {
   unit?: string;
 }
 
+/**
+ * 時間帯別交通量グラフの連携設定。
+ * zkntrf は「交通量調査単位区間」でキーされるため、地物側も交通量調査の
+ * 都道府県指定市コード＋調査単位区間番号（列名は年度差あり）を使う。
+ */
+export interface JikantaiDef {
+  /** 地物プロパティ上の都道府県指定市コード列名 */
+  prefKey: string;
+  /** 地物プロパティ上の交通量調査単位区間番号列名 */
+  unitKey: string;
+  /** 県別JSONの配信ベースURL（末尾スラッシュ込み。{NN}.json を連結して取得） */
+  baseUrl: string;
+}
+
 export interface YearDef {
   id: YearId;
   /** UI 表示名 */
@@ -38,6 +52,8 @@ export interface YearDef {
   speed: SpeedFields;
   /** ポップアップ表示フィールド（順序どおり、存在する列のみ描画） */
   popupFields: PopupField[];
+  /** 時間帯別交通量グラフ連携 */
+  jikantai: JikantaiDef;
 }
 
 /** 交通量・区間の共通フィールド（両年度で列名一致） */
@@ -70,6 +86,28 @@ const resolveUrl = (id: YearId, env: string | undefined): string => {
   return import.meta.env.DEV ? `/pmtiles/${id}.pmtiles` : PROD_URL[id];
 };
 
+/** 時間帯別交通量JSONの本番配信ベース（PMTilesと同じレンタルサーバ） */
+const JIKANTAI_PROD_BASE: Record<YearId, string> = {
+  r03: 'https://shiworks2.xsrv.jp/mlit-road-traffic-census/jikantai/r03/',
+  h27: 'https://shiworks2.xsrv.jp/mlit-road-traffic-census/jikantai/h27/',
+};
+const JIKANTAI_ENV: Record<YearId, string | undefined> = {
+  r03: import.meta.env.VITE_JIKANTAI_R03_BASE as string | undefined,
+  h27: import.meta.env.VITE_JIKANTAI_H27_BASE as string | undefined,
+};
+
+/**
+ * 時間帯別JSONベースURLの解決順:
+ *   1) 環境変数 VITE_JIKANTAI_*_BASE
+ *   2) 開発サーバは vite ミドルウェアのローカル配信 /jikantai/{id}/
+ *   3) 本番ビルドは JIKANTAI_PROD_BASE（外部ホスト）
+ */
+const resolveJikantaiBase = (id: YearId): string => {
+  const env = JIKANTAI_ENV[id];
+  if (env) return env;
+  return import.meta.env.DEV ? `/jikantai/${id}/` : JIKANTAI_PROD_BASE[id];
+};
+
 export const YEARS: Record<YearId, YearDef> = {
   r03: {
     id: 'r03',
@@ -98,6 +136,11 @@ export const YEARS: Record<YearId, YearDef> = {
       { label: '昼間非混雑時旅行速度（上り）', key: '昼間（非混雑時）／上り／旅行速度／合計（ｋｍ／ｈ）', unit: 'km/h' },
       { label: '昼間非混雑時旅行速度（下り）', key: '昼間（非混雑時）／下り／旅行速度／合計（ｋｍ／ｈ）', unit: 'km/h' },
     ],
+    jikantai: {
+      prefKey: '交通量／都道府県指定市コード',
+      unitKey: '交通量／調査単位区間番号',
+      baseUrl: resolveJikantaiBase('r03'),
+    },
   },
   h27: {
     id: 'h27',
@@ -126,6 +169,11 @@ export const YEARS: Record<YearId, YearDef> = {
       { label: '昼間非混雑時旅行速度（上り）', key: '昼間非混雑時／上り／旅行速度（ｋｍ／ｈ）', unit: 'km/h' },
       { label: '昼間非混雑時旅行速度（下り）', key: '昼間非混雑時／下り／旅行速度（ｋｍ／ｈ）', unit: 'km/h' },
     ],
+    jikantai: {
+      prefKey: '交通量調査単位区間番号／都道府県指定市コード',
+      unitKey: '交通量調査単位区間番号／調査単位区間番号',
+      baseUrl: resolveJikantaiBase('h27'),
+    },
   },
 };
 

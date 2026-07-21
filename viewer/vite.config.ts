@@ -17,6 +17,33 @@ const LOCAL_PMTILES: Record<string, string> = {
   '/pmtiles/h27.pmtiles': 'data/h27/output/traffic_census_2015_converted.pmtiles',
 };
 
+/**
+ * 開発時のみ有効な 時間帯別交通量JSON 配信。
+ * data/{year}/output/jikantai/{NN}.json（コンバーターの jikantai ステップ生成物）を
+ * public/ にコピーせずそのまま配信する。Range 不要の小さな静的 JSON。
+ */
+function serveJikantai(req: IncomingMessage, res: ServerResponse): boolean {
+  const url = (req.url ?? '').split('?')[0];
+  const m = /^\/jikantai\/(r03|h27)\/(\d{2}|index)\.json$/.exec(url);
+  if (!m) return false;
+
+  const filePath = resolve(REPO_ROOT, `data/${m[1]}/output/jikantai/${m[2]}.json`);
+  let size: number;
+  try {
+    size = statSync(filePath).size;
+  } catch {
+    res.statusCode = 404;
+    res.end(`jikantai not found: ${m[1]}/${m[2]}.json`);
+    return true;
+  }
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Length', String(size));
+  res.setHeader('Cache-Control', 'no-cache');
+  createReadStream(filePath).pipe(res);
+  return true;
+}
+
 function servePmtiles(req: IncomingMessage, res: ServerResponse): boolean {
   const url = (req.url ?? '').split('?')[0];
   const rel = LOCAL_PMTILES[url];
@@ -73,13 +100,15 @@ export default defineConfig({
       name: 'serve-local-pmtiles',
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
-          if (!servePmtiles(req, res)) next();
+          if (servePmtiles(req, res) || serveJikantai(req, res)) return;
+          next();
         });
       },
       // preview（ビルド後の確認）でも同じ配信を有効化
       configurePreviewServer(server) {
         server.middlewares.use((req, res, next) => {
-          if (!servePmtiles(req, res)) next();
+          if (servePmtiles(req, res) || serveJikantai(req, res)) return;
+          next();
         });
       },
     },
