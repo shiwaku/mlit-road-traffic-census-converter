@@ -2,6 +2,8 @@ import maplibregl from 'maplibre-gl';
 import type { YearDef } from '../config/years.ts';
 import { HIT_LAYER_IDS } from '../themes/helpers.ts';
 import type { Highlight } from '../map/highlight.ts';
+import { lookupUnit } from '../data/jikantai.ts';
+import { buildChartHtml } from './chart.ts';
 
 const esc = (v: unknown): string =>
   String(v ?? '')
@@ -31,8 +33,34 @@ function buildTable(props: Record<string, unknown>, year: YearDef): string {
   }
   return (
     `<div class="popup-title">${esc(year.label)}</div>` +
-    `<table>${rows.join('')}</table>`
+    `<table>${rows.join('')}</table>` +
+    `<div class="popup-chart-slot"><div class="popup-chart-loading">時間帯別交通量を読み込み中…</div></div>`
   );
+}
+
+/**
+ * ポップアップ内の時間帯別グラフを非同期に差し込む。
+ * 取得中に別区間へ差し替え／閉じられた場合は isCurrent() が false になり無視する
+ * （古い結果でポップアップを書き換えないためのガード）。
+ */
+async function fillChart(
+  popup: maplibregl.Popup,
+  props: Record<string, unknown>,
+  year: YearDef,
+  isCurrent: () => boolean,
+): Promise<void> {
+  let html: string;
+  try {
+    const unit = await lookupUnit(props, year.jikantai, year.id);
+    html = unit
+      ? buildChartHtml(unit)
+      : '<div class="popup-chart-empty">この区間の時間帯別交通量データはありません</div>';
+  } catch {
+    html = '<div class="popup-chart-empty">時間帯別交通量の取得に失敗しました</div>';
+  }
+  if (!isCurrent()) return;
+  const el = popup.getElement()?.querySelector('.popup-chart-slot');
+  if (el) el.innerHTML = html;
 }
 
 /**
@@ -82,15 +110,21 @@ export function initPopup(
 
     // 閉じ終えた後に選択を更新するので、close ハンドラに打ち消される余地がない
     highlight.select(map, feature);
+    const year = getYear();
+    const props = feature.properties as Record<string, unknown>;
     popup = new maplibregl.Popup({
       className: 'census-popup',
       maxWidth: '360px',
       closeOnClick: false,
     })
       .setLngLat(e.lngLat)
-      .setHTML(buildTable(feature.properties as Record<string, unknown>, getYear()))
+      .setHTML(buildTable(props, year))
       .addTo(map);
     popup.on('close', onUserClose);
+
+    // 時間帯別グラフを非同期取得して差し込む（この popup が最新である限り）
+    const thisPopup = popup;
+    void fillChart(thisPopup, props, year, () => popup === thisPopup);
   });
 
   for (const id of HIT_LAYER_IDS) {
