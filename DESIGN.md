@@ -230,9 +230,14 @@ python run.py --year r03 --step export --formats parquet,pmtiles
 - 平成27年度: 可視化ツール <https://www.mlit.go.jp/road/ir/ir-data/census_visualization2/index.html>
 - ライセンス: 国土交通省ウェブサイトの利用ルール ＝ **公共データ利用規約（第1.0版・PDL1.0）**（CC BY 4.0 互換）
   <https://www.mlit.go.jp/link.html>。**出典表示**＋**加工明示**が条件。
-- ⚠️ **第三者権利**: 道路線形（GeoJSONタイルの形状）は「デジタル道路地図（DRM）」等の第三者権利データに
-  由来する可能性があり、その場合PDL1.0の適用外。再配布・商用利用・ベクトルタイル配信（＝形状の公衆送信）時は
-  形状データの権利元・利用条件を要確認（配信形態を問わずベクトルタイルは形状を再配布するため回避不可）。
+- **形状データ（道路線形）も同じPDL1.0で扱う**（2026-07-26 一次資料調査で確認）。
+  国交省サイト利用ルールは「**権利表記の記載がない限り**PDL1.0に準拠」と定めるが、形状データについての
+  権利表記・第三者権利（デジタル道路地図＝DRM）の記載は一次資料に**一切存在しない**
+  （センサスのページ／可視化ツールindex／地図本体`webmap.html`のattributionは操作マニュアルへのリンクのみ／
+  操作マニュアルPDF／[xroadのツール紹介ページ](https://www.xroad.mlit.go.jp/dxsystem/236/) を確認）。
+  [道路データプラットフォーム公開データ利用規約](https://www.xroad.mlit.go.jp/policy/terms_of_use_public_access.html)
+  第3条1項も「複製、公衆送信、翻訳・変形等の翻案等、自由に利用でき、商用利用も可能」と明記しており、
+  **ベクトルタイル化してのWeb公開（＝形状の公衆送信）は許諾範囲内**。出典表示＋加工明示のみが条件。
 - 関連リポジトリ: <https://github.com/shiwaku/road-traffic-census-map-2021> /
   <https://github.com/shiwaku/road-traffic-census-map-2015>
 
