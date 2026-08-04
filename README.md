@@ -77,11 +77,29 @@ python scripts/download_jikantai_csv.py  --year r03   # → data/r03/csv/jikanta
 | H27 | GeoJSON | `traffic_census_2015_converted.geojson` | 4.0GB | 汎用・中間 |
 | H27 | GeoParquet | `traffic_census_2015_converted.parquet` | 111MB | QGIS・分析 |
 | H27 | PMTiles | `traffic_census_2015_converted.pmtiles` | 521MB | MapLibre配信 |
+| R03 | JSON | `jikantai/{01..47}.json` + `index.json` | 計20MB | 時間帯別交通量グラフ用 |
+| H27 | JSON | `jikantai/{01..47}.json` + `index.json` | 計20MB | 時間帯別交通量グラフ用 |
 
-- いずれも箇所別基本表を紐づけ済み（結合率 **100%**）。ファイル名の接尾辞は `output_suffix`（既定 `converted`）。
+- 空間データはいずれも箇所別基本表を紐づけ済み（結合率 **100%**）。ファイル名の接尾辞は `output_suffix`（既定 `converted`）。
 - **PMTiles** は `tippecanoe -Z4 -z14 -pk -pf`（`--no-tile-size-limit` / `--no-feature-limit`）で生成し、
   **featureを間引かず全保持**する（`--drop-densest-as-needed` は使わない）。
+- **時間帯別交通量JSON** は `--step jikantai` の生成物（詳細は [DESIGN.md](DESIGN.md) §8）。
 - 検証記録は [VERIFICATION.md](VERIFICATION.md)。R03は全件監査で実DL漏れ3件を回収済み。
+
+### ダウンロード（GitHub Releases）
+
+パイプラインを実行せずに成果物だけ使いたい場合は
+**[Releases](../../releases)** から取得できる（GeoParquet / PMTiles / 時間帯別JSON。GeoJSONは巨大なため配布対象外）。
+
+```bash
+gh release download data-v1                                              # 全部
+gh release download data-v1 -p 'traffic_census_2021_converted.parquet'   # 個別
+sha256sum -c SHA256SUMS.txt                                              # 整合性検証
+```
+
+> **注意**: GitHubのリリースアセットは HTTP Range に対応する一方 **CORSヘッダを返さない**ため、
+> PMTiles のURLをブラウザから直接ソース指定するとCORSで遮断される。Web地図で配信する場合は
+> CORS対応のホスト（S3 / Cloudflare R2 / 一般のWebサーバ等）に置き直すこと。
 
 ### QGIS 主題図スタイル（QML）
 
