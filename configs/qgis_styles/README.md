@@ -1,6 +1,7 @@
-# QGIS スタイル（主題図 QML）
+# QGIS スタイル（主題図 QML / QLR / QGZ）
 
-GeoParquet を QGIS で表示するための主題図スタイル。
+GeoParquet を QGIS で表示するための主題図スタイル。QML（スタイル単体）に加え、
+ダウンロードしただけでスタイルが当たる QLR・QGZ を [`bundle/`](bundle/) に用意している（後述）。
 [road-traffic-census-map-2021](https://github.com/shiwaku/road-traffic-census-map-2021) ビューワの
 **5種類の主題図**に色分け・区分を合わせている。
 
@@ -27,13 +28,50 @@ GeoParquet を QGIS で表示するための主題図スタイル。
    で、その年度の接頭辞に合った `.qml` を選択。
 3. 主題図を切り替えるときは別の `.qml` を読み込む。
 
+## 同梱物（`bundle/`）— ダウンロードしただけでスタイルが当たる形
+
+上の手順（手動で「スタイルを読み込む」）を省けるように、`bundle/` に**リリース配布用の3形式**を
+`generate_qgis_bundle.py` で生成している。スタイル本体は上表のQMLをそのまま埋め込むので、
+QMLを直して両スクリプトを再実行すれば同梱物にも自動で伝播する（色・区分の二重管理は無い）。
+
+| ファイル | 数 | 使い方 | 得られるもの |
+|---|---|---|---|
+| `<prefix>.qgz` | 2（年度別） | ダブルクリックで開く | 5主題図＋地理院淡色（背景）が一括。レイヤのチェックで切替 |
+| `<prefix>_N_<theme>.qlr` | 10（5主題図×2年度） | QGISへドラッグ&ドロップ | その主題図1つがスタイル適用済みレイヤとして追加 |
+| `<prefix>_converted.qml` | 2（年度別） | parquetと同じフォルダに置くだけ | parquet追加時にQGISが既定スタイルとして自動適用（中身=24時間交通量図） |
+
+> **前提**: `.qgz` / `.qlr` は datasource を相対パス（`./<prefix>_converted.parquet`）で持ち、
+> QGIS はそれを**ファイル自身の位置**を基準に解決する。したがって同梱物と GeoParquet は
+> **同一フォルダ**に置く必要がある（リリースの全アセットを1フォルダに落とした状態が該当）。
+> サイドカーQMLも「parquetと同名・同階層」が自動適用の条件。
+
+プロジェクトCRSはデータと同じ（R03=EPSG:4612 / H27=EPSG:4326、`<units>degrees</units>`）。
+背景の地理院タイルはXYZなのでレイヤ側に EPSG:3857 と全球extentを持たせ、QGISがオンザフライ変換して重ねる。
+
+XMLの細部は、実際に配布・動作している
+[mlit-urban-planning-converter](https://github.com/shiwaku/mlit-urban-planning-converter)
+の `src/tosiko_pmtiles/qgis_project.py`（QGIS 3.34の実出力合わせ）に倣っている。
+背景地図レイヤは属性・子要素までそちらと一致させてある。
+
+```bash
+python configs/qgis_styles/generate_qgis_bundle.py                  # bundle/ を生成
+python configs/qgis_styles/generate_qgis_bundle.py --install-to-data # data/<year>/output/ にも配置
+python configs/qgis_styles/generate_qgis_bundle.py --pack /tmp/dist  # リリース添付用ZIPを作る
+```
+
+`--install-to-data` はローカルで `run.py` 実行後の `data/{r03,h27}/output/` に同梱物をコピーする
+（parquetと並ぶので、そのまま `.qgz` を開いて確認できる）。`--pack` は
+`<prefix>_qgis.zip`（qgz + qlr5 + 主題図qml5 + サイドカーqml + README.txt）を作る。
+
 ## 再生成
 
 ```bash
-python configs/qgis_styles/generate_qml.py
+python configs/qgis_styles/generate_qml.py           # 主題図QML（10ファイル）
+python configs/qgis_styles/generate_qgis_bundle.py   # 同梱物（bundle/）
 ```
 
-区分値・色は `generate_qml.py` 冒頭の定義を編集して調整する。
+区分値・色は `generate_qml.py` 冒頭の定義を編集して調整する。**QMLを変えたら
+`generate_qgis_bundle.py` も再実行**すること（`bundle/` に埋め込まれたスタイルを更新するため）。
 
 ## 実装メモ（QGISの落とし穴）
 
@@ -42,3 +80,19 @@ python configs/qgis_styles/generate_qml.py
   **入れ子ルール（親=道路種別で色、子=交通量ビンで静的な線幅）** に変更し、DDに依存しない実装にした。
 - **速度図の分類式は `min()`/`max()` を使う。** QGISの式に `least()`/`greatest()` は無く、
   使うと「式が不正です」となり全フィーチャが未分類＝非表示になる（混雑時・非混雑時旅行速度図で発生）。
+- **`bundle/` の相対パスはファイル自身の位置基準。** `.qgz` は `<properties><Paths><Absolute>false`、
+  `.qlr` は QGIS が読み込み元パスで解決する。同梱物を parquet と別フォルダに置くとレイヤが
+  「利用不可」になるため、配布時は「同じフォルダに展開」を必ず案内する。
+- **`<properties><SpatialRefSys><ProjectionsEnabled>1` が無いと `<projectCrs>` が読まれない。**
+  QGISは `readNumEntry("SpatialRefSys","/ProjectionsEnabled",0)` が偽ならprojectCrsノードを
+  見にいかない（qgsproject.cpp）。**プロジェクトCRSが「CRSなし」になり、投影変換ができないので
+  EPSG:3857の背景地図も描かれない**という2症状が同時に出る。初版でまさにこれを踏んだ。
+- **背景地図（XYZ）は実出力を写す。** 手書きの最小構成では読み込めても描画されなかった。要点は
+  URIを `http-header:referer=&type=xyz&url=…（{z}はpercent encode）&zmax=18&zmin=0` にすること、
+  レイヤのCRSとextentを **EPSG:3857・Webメルカトル全球**で書くこと（プロジェクトの経緯度を
+  流用するとメートル値が度として扱われ、どこにも出てこない）、`<extent>`／`<wgs84extent>`／
+  `<noData>`／`<flags>`／`<temporal>`／`<customproperties>`／`<pipe>` を省かないこと。
+- **datasource に `|layername=` は付けない。** Parquetのレイヤ名はファイル基底名で決まるため、
+  付けると取り違えの元になるだけ（参考実装も付けていない）。
+- **GeoParquet の読み込みには GDAL の Parquet ドライバが必要。** 無いビルドではブラウザパネルに
+  `.parquet` が出ないため、スタイル以前にデータが開けない。
