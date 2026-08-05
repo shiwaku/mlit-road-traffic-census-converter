@@ -89,7 +89,8 @@ python scripts/download_jikantai_csv.py  --year r03   # → data/r03/csv/jikanta
 ### ダウンロード（GitHub Releases）
 
 パイプラインを実行せずに成果物だけ使いたい場合は
-**[Releases](../../releases)** から取得できる（GeoParquet / PMTiles / 時間帯別JSON。GeoJSONは巨大なため配布対象外）。
+**[Releases](../../releases)** から取得できる（GeoParquet / PMTiles / 時間帯別JSON ＋ QGIS同梱物。
+GeoJSONは巨大なため配布対象外）。
 
 ```bash
 gh release download data-v1                                              # 全部
@@ -97,17 +98,36 @@ gh release download data-v1 -p 'traffic_census_2021_converted.parquet'   # 個�
 sha256sum -c SHA256SUMS.txt                                              # 整合性検証
 ```
 
+QGISユーザーは**全アセットを同じフォルダに落とせばスタイル適用済みで開ける**
+（`traffic_census_2021.qgz` を開く / parquetをD&D すればサイドカーQMLが自動適用。下記参照）。
+
 > **注意**: GitHubのリリースアセットは HTTP Range に対応する一方 **CORSヘッダを返さない**ため、
 > PMTiles のURLをブラウザから直接ソース指定するとCORSで遮断される。Web地図で配信する場合は
 > CORS対応のホスト（S3 / Cloudflare R2 / 一般のWebサーバ等）に置き直すこと。
 
-### QGIS 主題図スタイル（QML）
+### QGIS 主題図スタイル（QML / QLR / QGZ）
 
-GeoParquet を QGIS で主題図表示するための QML を [`configs/qgis_styles/`](configs/qgis_styles/) に用意。
+GeoParquet を QGIS で主題図表示するためのスタイルを [`configs/qgis_styles/`](configs/qgis_styles/) に用意。
 [road-traffic-census-map-2021](https://github.com/shiwaku/road-traffic-census-map-2021) ビューワの
 **5種類**（24時間交通量 / 混雑度 / 大型車混入率 / 混雑時旅行速度 / 昼間非混雑時旅行速度）に色分けを合わせており、
-**R03（`traffic_census_2021_*`）・H27（`traffic_census_2015_*`）両年度分**を用意（計10ファイル）。
-QGISでレイヤ→シンボロジ→「スタイルを読み込む」で `.qml` を適用（詳細は同フォルダのREADME）。
+**R03（`traffic_census_2021_*`）・H27（`traffic_census_2015_*`）両年度分**を用意（QML 計10ファイル）。
+
+手動で「スタイルを読み込む」をしなくて済むよう、[`configs/qgis_styles/bundle/`](configs/qgis_styles/bundle/) に
+3形式を生成し、リリースにも同梱している（スタイル本体は上記QMLの埋め込みなので色・区分は常に一致）。
+
+| ファイル | 使い方 | 得られるもの |
+|---|---|---|
+| `traffic_census_2021.qgz` | ダブルクリックで開く | 5主題図＋地理院淡色（背景）が一括。レイヤのチェックで切替 |
+| `traffic_census_2021_N_<theme>.qlr` | QGISへドラッグ&ドロップ | その主題図1つがスタイル適用済みレイヤとして追加 |
+| `traffic_census_2021_converted.qml` | parquetと同じフォルダに置く | parquet追加時にQGISが自動適用（中身=24時間交通量図） |
+
+> **前提**: `.qgz` / `.qlr` は datasource を相対パスで持つため、**GeoParquet と同じフォルダ**に置くこと。
+> GeoParquet の読み込みには GDAL の Parquet ドライバが必要（QGISの「ヘルプ→QGISについて」で確認）。
+
+プロジェクトCRSはデータと同じ（R03=EPSG:4612 / H27=EPSG:4326）。背景の地理院タイルはレイヤ側に
+EPSG:3857 を持たせ、QGISがオンザフライ変換して重ねる。
+
+生成は `python configs/qgis_styles/generate_qgis_bundle.py`（詳細は同フォルダのREADME）。
 
 ### 成果物サイズが年度で異なる理由
 
@@ -153,6 +173,7 @@ mlit-road-traffic-census-converter/
 │   ├── schema/               … 年度別 項目名と型（Name,TypeName）
 │   ├── tileindex/            … tileindex_zoomlevel_12.csv / KenCodeList.csv
 │   └── qgis_styles/          … QGIS主題図QML（5種）＋generate_qml.py
+│       └── bundle/           … リリース同梱物（サイドカーQML/QLR/QGZ）＋generate_qgis_bundle.py
 │
 ├── scripts/                  … 個別ダウンロードスクリプト（download.py の薄いラッパー）
 │   ├── download_geojson_tiles.py
