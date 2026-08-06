@@ -8,6 +8,9 @@
 - 手順: まず手元データのみのオフライン検証を実施。その後ユーザー承認のもと、
   MLITサーバへ**低負荷（HEAD照会・レート制限）で全件監査**を行い、真のDL漏れを確定した。
 
+あわせて、配布物（GeoParquet同梱のQGIS zip）が意図どおり機能するかの確認を
+[§6](#6-配布物geoparquet同梱qgis-zipの検証)に記録している（2026-08-07）。
+
 ---
 
 ## 総括
@@ -130,3 +133,34 @@
   1. `census` ⇔ `交通調査基本区間番号` の双方向マッチ率レポート（`check_join`）
   2. 孤児タイル検査・indexカバー率（`check_tiles`）
 - 実行: `python run.py --year r03 --step verify`
+
+---
+
+## 6. 配布物（GeoParquet同梱QGIS zip）の検証
+
+検証日: 2026-08-07 / 対象: `data-v1` の `traffic_census_{2021,2015}_qgis.zip`（GeoParquet同梱版）
+
+`.qgz` / `.qlr` は datasource を相対パス（`./<prefix>_converted.parquet`）で持ち、QGIS はそれを
+ファイル自身の位置基準で解決する。従来は「zipの解凍先を parquet と同じフォルダにする」という
+利用者側の手順が必須で、外すとレイヤが「利用不可」になった。zip に GeoParquet を同梱して
+構造的に解消したため、その配布物が意図どおり機能するかを確認した記録。
+
+| 観点 | R03（2021） | H27（2015） | 判定 |
+|---|---|---|---|
+| zipサイズ / エントリ数 | 80,601,332 B / 14 | 99,276,525 B / 14 | ✅ |
+| `zipfile.testzip()` | OK | OK | ✅ |
+| zip64 使用（Windows標準展開の互換性） | なし | なし | ✅ |
+| 同梱parquet の SHA256 = 単体アセット | 一致（`b9f4cff1…`） | 一致（`a923db47…`） | ✅ |
+| `sha256sum -c SHA256SUMS.txt`（公開物を再DL） | OK | OK | ✅ |
+| 任意フォルダへ解凍 → `.qgz` の相対datasource解決 | 解決（99,006,002 B） | 解決 | ✅ |
+| `<projectCrs>` | EPSG:4612 | EPSG:4326 | ✅ 元データCRSどおり |
+| **QGIS GUI で `.qgz` を開いた実表示** | **確認済み** | **確認済み** | ✅ |
+
+**結論:** 「zipをダウンロード → 任意の場所に解凍 → `.qgz` をダブルクリック」だけで、
+5主題図＋地理院淡色（背景）がスタイル適用済みで開くことを両年度で確認した。
+zip 内の GeoParquet は単体アセット `*_converted.parquet` とバイト同一なので、
+どちらを使っても同じデータである。
+
+生成コミットは `eb945d5`（`python configs/qgis_styles/generate_qgis_bundle.py --pack <dir>`）。
+`ZIP_EPOCH` 固定により同一入力からは同一バイト列が出るため、再ビルドで差分は生じない。
+実装上の注意点は [`configs/qgis_styles/README.md`](configs/qgis_styles/README.md) の実装メモを参照。
