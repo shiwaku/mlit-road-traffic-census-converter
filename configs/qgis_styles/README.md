@@ -78,6 +78,14 @@ python configs/qgis_styles/generate_qml.py           # 主題図QML（10ファ�
 python configs/qgis_styles/generate_qgis_bundle.py   # 同梱物（bundle/）
 ```
 
+**2つは必ずセットで実行する。** `generate_qml.py` だけ実行して `generate_qgis_bundle.py` を忘れると、
+QMLは新しいのに `bundle/` の `.qlr` / `.qgz` に埋め込まれたスタイルが古いまま残り、
+「色・区分は常に一致」という前提が崩れる。
+
+この取り違えは [`.github/workflows/check-qgis-styles.yml`](../../.github/workflows/check-qgis-styles.yml)
+が検知する（両方を再生成して `git diff --exit-code`。出力は `ZIP_EPOCH` 固定で再現的なので、
+再生成漏れがあるときだけ差分が出る）。CIが赤くなったら上の2コマンドを実行して差分をコミットすればよい。
+
 区分値・色は `generate_qml.py` 冒頭の定義を編集して調整する。**QMLを変えたら
 `generate_qgis_bundle.py` も再実行**すること（`bundle/` に埋め込まれたスタイルを更新するため）。
 
