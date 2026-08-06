@@ -12,7 +12,8 @@
 （QMLを直したら本スクリプトを再実行すれば同梱物にも伝播する）。
 
 datasource は相対パス（`./<file>.parquet`）。QGISは QLR/QGZ 自身の位置を基準に解決するので、
-**同梱物と parquet は同一フォルダに置く**必要がある（リリースを丸ごとダウンロードした状態が該当）。
+**同梱物と parquet は同一フォルダに置く**必要がある。`--pack` で作るリリース用ZIPは
+GeoParquet 自体を同梱するので、解凍しただけでこの条件が満たされる（解凍先を問わない）。
 
 XML の細部は、実際に動いている
 [mlit-urban-planning-converter](https://github.com/shiwaku/mlit-urban-planning-converter)
@@ -24,6 +25,7 @@ XML の細部は、実際に動いている
     python configs/qgis_styles/generate_qgis_bundle.py
     python configs/qgis_styles/generate_qgis_bundle.py --install-to-data  # data/<year>/output/ にも配置
     python configs/qgis_styles/generate_qgis_bundle.py --pack /tmp/dist   # リリース用ZIPを作る
+                                                                         # （GeoParquet同梱。要 run.py 実行済み）
 """
 import argparse
 import os
@@ -395,11 +397,14 @@ def build_all() -> dict:
     return out
 
 
-README_TXT = """道路交通センサス GeoParquet — QGIS スタイル同梱物（{era} / {wareki}）
+README_TXT = """道路交通センサス GeoParquet — QGIS 一式（{era} / {wareki}）
 
-■ 置き場所（重要）
-  この中のファイルは {parquet} と「同じフォルダ」に展開してください。
-  .qgz / .qlr はデータソースを相対パスで持つため、別フォルダだとレイヤが見つかりません。
+■ まずこれだけ
+  このZIPを「どこか1つのフォルダに丸ごと解凍」して、{prefix}.qgz をダブルクリック。
+  データ（{parquet}）もこのZIPに入っているので、他に何もダウンロードは要りません。
+
+  注意: .qgz / .qlr はデータソースを相対パスで持ちます。解凍後に .qgz だけを別の場所へ
+  移したり、{parquet} を消したりすると、レイヤが見つからなくなります。
 
 ■ 使い方（3通り。お好みで）
   1) {prefix}.qgz をダブルクリック
@@ -432,29 +437,60 @@ README_TXT = """道路交通センサス GeoParquet — QGIS スタイル同梱�
   背景地図: 地理院タイル（淡色地図） https://maps.gsi.go.jp/development/ichiran.html
 
 ■ 再生成
+  python run.py --year {year} --step all               # GeoParquet 本体
   python configs/qgis_styles/generate_qml.py           # 主題図QML
   python configs/qgis_styles/generate_qgis_bundle.py   # 本同梱物（QML/QLR/QGZ）
   https://github.com/shiwaku/mlit-road-traffic-census-converter
 """
 
 
+def parquet_path(year: str, prefix: str) -> str:
+    """同梱する GeoParquet の場所（run.py の出力先）。"""
+    return os.path.join(REPO_ROOT, "data", year, "output", f"{prefix}_converted.parquet")
+
+
 def pack(dest_dir: str, files: dict) -> None:
-    """年度ごとに リリース添付用ZIP を作る（qgz + qlr + 主題図qml + README）。"""
+    """年度ごとに リリース添付用ZIP を作る（GeoParquet + qgz + qlr + 主題図qml + README）。
+
+    GeoParquet を同梱するのが要点。`.qgz` / `.qlr` の datasource は相対パスなので、
+    同梱していないと「解凍先を parquet と同じフォルダにする」という利用者側の手順が必須になり、
+    そこを間違えるとレイヤが読めない。ZIPに入れておけば「解凍して .qgz を開く」だけで済む。
+    """
     os.makedirs(dest_dir, exist_ok=True)
+    missing = {y: parquet_path(y, c["prefix"]) for y, c in YEARS.items()
+               if not os.path.isfile(parquet_path(y, c["prefix"]))}
+    if missing:
+        raise SystemExit(
+            "同梱する GeoParquet がありません。先に生成してください:\n"
+            + "\n".join(f"  {p}  ← python run.py --year {y} --step all"
+                        for y, p in sorted(missing.items())))
+
     for year, ycfg in YEARS.items():
         meta = YEAR_META[year]
         pre = ycfg["prefix"]
         zip_path = os.path.join(dest_dir, f"{pre}_qgis.zip")
         with zipfile.ZipFile(zip_path, "w") as z:
-            def add(name: str, data: bytes) -> None:
+            def info_for(name: str, size: int = 0) -> zipfile.ZipInfo:
+                # 実行時刻ではなく固定epochを使う（ZIP_EPOCH の理由は定義箇所のコメント参照）
                 info = zipfile.ZipInfo(name, date_time=ZIP_EPOCH)
                 info.compress_type = zipfile.ZIP_DEFLATED
-                z.writestr(info, data)
+                info.file_size = size
+                return info
+
+            def add(name: str, data: bytes) -> None:
+                z.writestr(info_for(name), data)
+
+            def add_path(name: str, path: str) -> None:
+                """大きいファイルはメモリに載せずストリームで書く（parquetは100MB級）。"""
+                size = os.path.getsize(path)
+                with open(path, "rb") as src, z.open(info_for(name, size), "w") as dst:
+                    shutil.copyfileobj(src, dst, 1024 * 1024)
 
             add("README.txt", README_TXT.format(
                 era=meta["era"], wareki=meta["wareki"], prefix=pre, epsg=meta["epsg"],
-                parquet=f"{pre}_converted.parquet",
+                year=year, parquet=f"{pre}_converted.parquet",
                 basename=f"{pre}_converted").encode("utf-8"))
+            add_path(f"{pre}_converted.parquet", parquet_path(year, pre))
             for name, data in sorted(files.items()):
                 if name.startswith(pre):
                     add(name, data)
@@ -472,7 +508,8 @@ def main():
     ap.add_argument("--install-to-data", action="store_true",
                     help="data/<year>/output/ が存在すればそこにも配置する（ローカル確認用）")
     ap.add_argument("--pack", metavar="DIR",
-                    help="リリース添付用の <prefix>_qgis.zip を DIR に作る")
+                    help="リリース添付用の <prefix>_qgis.zip を DIR に作る"
+                         "（GeoParquet を同梱するので data/<year>/output/ に生成済みである必要がある）")
     args = ap.parse_args()
 
     os.makedirs(BUNDLE_DIR, exist_ok=True)

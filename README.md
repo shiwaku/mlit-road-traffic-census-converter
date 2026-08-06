@@ -94,12 +94,14 @@ GeoJSONは巨大なため配布対象外）。
 
 ```bash
 gh release download data-v1                                              # 全部
-gh release download data-v1 -p 'traffic_census_2021_converted.parquet'   # 個別
+gh release download data-v1 -p 'traffic_census_2021_qgis.zip'            # QGIS一式（GeoParquet同梱）
+gh release download data-v1 -p 'traffic_census_2021_converted.parquet'   # GeoParquet単体
 sha256sum -c SHA256SUMS.txt                                              # 整合性検証
 ```
 
-QGISユーザーは**全アセットを同じフォルダに落とせばスタイル適用済みで開ける**
-（`traffic_census_2021.qgz` を開く / parquetをD&D すればサイドカーQMLが自動適用。下記参照）。
+**QGISで見たいだけなら `traffic_census_<年度>_qgis.zip` の1ファイルで足りる。**
+GeoParquet 本体を同梱しているので、解凍して `.qgz` をダブルクリックすれば
+5主題図＋背景地図がスタイル適用済みで開く（他のアセットは不要）。
 
 > **注意**: GitHubのリリースアセットは HTTP Range に対応する一方 **CORSヘッダを返さない**ため、
 > PMTiles のURLをブラウザから直接ソース指定するとCORSで遮断される。Web地図で配信する場合は
@@ -113,7 +115,8 @@ GeoParquet を QGIS で主題図表示するためのスタイルを [`configs/q
 **R03（`traffic_census_2021_*`）・H27（`traffic_census_2015_*`）両年度分**を用意（QML 計10ファイル）。
 
 手動で「スタイルを読み込む」をしなくて済むよう、[`configs/qgis_styles/bundle/`](configs/qgis_styles/bundle/) に
-3形式を生成し、リリースにも同梱している（スタイル本体は上記QMLの埋め込みなので色・区分は常に一致）。
+3形式を生成し、リリースの `traffic_census_<年度>_qgis.zip` に **GeoParquet ごと同梱**している
+（スタイル本体は上記QMLの埋め込みなので色・区分は常に一致）。
 
 | ファイル | 使い方 | 得られるもの |
 |---|---|---|
@@ -121,7 +124,9 @@ GeoParquet を QGIS で主題図表示するためのスタイルを [`configs/q
 | `traffic_census_2021_N_<theme>.qlr` | QGISへドラッグ&ドロップ | その主題図1つがスタイル適用済みレイヤとして追加 |
 | `traffic_census_2021_converted.qml` | parquetと同じフォルダに置く | parquet追加時にQGISが自動適用（中身=24時間交通量図） |
 
-> **前提**: `.qgz` / `.qlr` は datasource を相対パスで持つため、**GeoParquet と同じフォルダ**に置くこと。
+> **前提**: `.qgz` / `.qlr` は datasource を相対パス（`./<prefix>_converted.parquet`）で持つため、
+> **GeoParquet と同じフォルダ**に置くこと。リリースのzipは同梱済みなので、丸ごと1フォルダに
+> 解凍すれば満たされる（`bundle/` から個別に取る場合は自分で並べる）。
 > GeoParquet の読み込みには GDAL の Parquet ドライバが必要（QGISの「ヘルプ→QGISについて」で確認）。
 
 プロジェクトCRSはデータと同じ（R03=EPSG:4612 / H27=EPSG:4326）。背景の地理院タイルはレイヤ側に

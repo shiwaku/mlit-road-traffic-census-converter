@@ -42,8 +42,9 @@ QMLを直して両スクリプトを再実行すれば同梱物にも自動で�
 
 > **前提**: `.qgz` / `.qlr` は datasource を相対パス（`./<prefix>_converted.parquet`）で持ち、
 > QGIS はそれを**ファイル自身の位置**を基準に解決する。したがって同梱物と GeoParquet は
-> **同一フォルダ**に置く必要がある（リリースの全アセットを1フォルダに落とした状態が該当）。
-> サイドカーQMLも「parquetと同名・同階層」が自動適用の条件。
+> **同一フォルダ**に置く必要がある。サイドカーQMLも「parquetと同名・同階層」が自動適用の条件。
+> リリース用ZIP（`--pack`）は GeoParquet を同梱するので、解凍しただけでこの条件を満たす。
+> `bundle/` から個別に取り出して使う場合は、自分で parquet と並べる。
 
 プロジェクトCRSはデータと同じ（R03=EPSG:4612 / H27=EPSG:4326、`<units>degrees</units>`）。
 背景の地理院タイルはXYZなのでレイヤ側に EPSG:3857 と全球extentを持たせ、QGISがオンザフライ変換して重ねる。
@@ -60,8 +61,15 @@ python configs/qgis_styles/generate_qgis_bundle.py --pack /tmp/dist  # リリー
 ```
 
 `--install-to-data` はローカルで `run.py` 実行後の `data/{r03,h27}/output/` に同梱物をコピーする
-（parquetと並ぶので、そのまま `.qgz` を開いて確認できる）。`--pack` は
-`<prefix>_qgis.zip`（qgz + qlr5 + 主題図qml5 + サイドカーqml + README.txt）を作る。
+（parquetと並ぶので、そのまま `.qgz` を開いて確認できる）。
+
+`--pack` は `<prefix>_qgis.zip`（14ファイル = **GeoParquet** + qgz + qlr5 + 主題図qml5 + サイドカーqml
++ README.txt）を作る。**GeoParquet を同梱するのが要点**で、これにより利用者は
+「zipをダウンロード → 解凍 → `.qgz` を開く」だけで済み、解凍先を parquet に合わせる必要がなくなる
+（そこを間違えるとレイヤが「利用不可」になるのが最大の躓きどころだった）。
+同梱元は `data/<year>/output/<prefix>_converted.parquet` なので、事前に
+`python run.py --year {r03,h27} --step all` が必要（無い場合はエラーで停止する）。
+サイズは R03 約81MB / H27 約99MB（parquetは内部圧縮済みだが deflate でさらに15〜19%縮む）。
 
 ## 再生成
 
@@ -82,7 +90,9 @@ python configs/qgis_styles/generate_qgis_bundle.py   # 同梱物（bundle/）
   使うと「式が不正です」となり全フィーチャが未分類＝非表示になる（混雑時・非混雑時旅行速度図で発生）。
 - **`bundle/` の相対パスはファイル自身の位置基準。** `.qgz` は `<properties><Paths><Absolute>false`、
   `.qlr` は QGIS が読み込み元パスで解決する。同梱物を parquet と別フォルダに置くとレイヤが
-  「利用不可」になるため、配布時は「同じフォルダに展開」を必ず案内する。
+  「利用不可」になる。これは案内文でカバーしきれない類の失敗なので、リリース用ZIPには
+  **GeoParquet 自体を入れて構造的に防いでいる**（`pack()`）。ZIPはフラット構造のままにしており、
+  Windows/macOS の既定の展開がZIP名のフォルダを作るため、結果として1フォルダに揃う。
 - **`<properties><SpatialRefSys><ProjectionsEnabled>1` が無いと `<projectCrs>` が読まれない。**
   QGISは `readNumEntry("SpatialRefSys","/ProjectionsEnabled",0)` が偽ならprojectCrsノードを
   見にいかない（qgsproject.cpp）。**プロジェクトCRSが「CRSなし」になり、投影変換ができないので
