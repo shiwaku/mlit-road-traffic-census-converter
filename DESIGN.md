@@ -153,12 +153,17 @@ mlit-road-traffic-census-converter/
 │   ├── h27.yaml / r03.yaml / r07.yaml（R07はテンプレート）
 │   ├── mappings/                … コード→ラベル辞書（h27_mappings.yaml, r03_mappings.yaml）
 │   ├── schema/                  … 年度別の項目名と型（h27_schema.csv, r03_schema.csv）
-│   └── tileindex/               … tileindex_zoomlevel_12.csv, KenCodeList.csv
+│   ├── tileindex/               … tileindex_zoomlevel_12.csv, KenCodeList.csv
+│   └── qgis_styles/             … QGIS主題図スタイル（§9）。生成物をコミットしている
+│       ├── generate_qml.py         … 主題図QML 10ファイル（5主題図×2年度）を生成
+│       ├── generate_qgis_bundle.py … サイドカーQML / QLR / QGZ を生成、`--pack` で配布ZIP
+│       └── bundle/                 … 上記の生成物（リリース配布物の元）
 │
-├── scripts/                     … 個別ダウンロードスクリプト（download.py の薄いラッパー）
+├── scripts/                     … 個別ダウンロード＋リリース補助（薄いラッパー中心）
 │   ├── download_geojson_tiles.py   … GeoJSONタイル単体DL
 │   ├── download_kasho_csv.py       … 箇所別基本表CSV単体DL
-│   └── download_jikantai_csv.py    … 時間帯別交通量表CSV単体DL（§8）
+│   ├── download_jikantai_csv.py    … 時間帯別交通量表CSV単体DL（§8）
+│   └── build_release_assets.py     … リリース用アセット一式＋SHA256SUMS.txt を用意（§9）
 │
 ├── run.py                       … CLI: `python run.py --year r03 --step all`
 │
@@ -318,3 +323,50 @@ Webマップ上で地物クリック時に**時間帯別交通量のグラフ**�
   - **本番配信**: 県別JSON（各年度約20MB・data/ はgit管理外）は PMTiles と同じレンタルサーバへ要アップロード
     （`https://shiworks2.xsrv.jp/mlit-road-traffic-census/jikantai/{r03,h27}/{NN}.json`）。`years.ts` の
     `JIKANTAI_PROD_BASE` が既定、`VITE_JIKANTAI_{R03,H27}_BASE` で上書き可。
+
+---
+
+## 9. QGIS向け配布物とリリース運用
+
+GeoParquet を QGIS で開いたときに**主題図として色分けされた状態**にするための同梱物と、
+その配布（GitHub Releases）の運用。詳細は
+[`configs/qgis_styles/README.md`](configs/qgis_styles/README.md) と
+[`scripts/README.md`](scripts/README.md) を参照。
+
+### 9.1 同梱物の構成
+
+`generate_qml.py` が主題図QML（5主題図×2年度=10ファイル）を作り、`generate_qgis_bundle.py` が
+それを埋め込んで3形式を出す。**スタイル本体はQMLの埋め込みなので色・区分の二重管理が無い。**
+
+| 形式 | 用途 |
+|---|---|
+| `<prefix>_converted.qml` | サイドカー。parquetと同名・同階層に置くとQGISが既定スタイルとして自動適用 |
+| `<prefix>_N_<theme>.qlr` | レイヤ定義。1ファイルD&Dで主題図1つを追加 |
+| `<prefix>.qgz` | 5主題図＋地理院淡色（背景）をまとめたプロジェクト |
+
+### 9.2 datasource は相対パス（配布設計上の要点）
+
+`.qgz` / `.qlr` の datasource は `./<prefix>_converted.parquet`。QGIS はこれを**ファイル自身の位置**
+基準で解決するため、同梱物と GeoParquet は同一フォルダに無いとレイヤが「利用不可」になる。
+
+当初は「zipの解凍先を parquet と同じフォルダにする」よう案内していたが、案内文で防ぎきれる
+失敗ではないため、**配布ZIPに GeoParquet 自体を同梱**して構造的に解消した（`--pack`）。
+利用者の手順は「zipをDL → 任意の場所に解凍 → `.qgz` を開く」だけになる。
+検証記録は [VERIFICATION.md §6](VERIFICATION.md) を参照。
+
+### 9.3 生成物をコミットする方針とドリフト検知
+
+`bundle/` の生成物はリポジトリにコミットしている（リリース配布物の元であり、
+利用者がリポジトリから直接取れるようにするため）。zip は `ZIP_EPOCH`、tar.gz は
+mtime/uid/gid とgzipヘッダを固定して**再現ビルド**にしてあるので、同じ入力からは同じバイト列が出る。
+
+これを利用して、`.github/workflows/check-qgis-styles.yml` が両ジェネレータを再実行し
+`git diff --exit-code` で差分を検知する。`generate_qml.py` を直したあとに
+`generate_qgis_bundle.py` の再実行を忘れると `bundle/` だけ古くなるが、それを CI で止められる。
+
+### 9.4 リリース資産の組み立て
+
+`scripts/build_release_assets.py` が配布アセット（QGIS zip / 時間帯別JSON tar.gz）を生成し、
+数百MB級の parquet / pmtiles はコピーせず置いてある場所のまま参照して、
+全10アセットの `SHA256SUMS.txt` を書き出す。最後に `gh release upload` のコマンドを表示する
+（スクリプト自身はアップロードしない）。

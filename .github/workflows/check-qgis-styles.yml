@@ -1,0 +1,55 @@
+name: Check QGIS styles are up to date
+
+# configs/qgis_styles/ の生成物（主題図QML と bundle/）がコミット済みの内容と一致するかを検証する。
+#
+# QML / QLR / QGZ はスクリプト生成物をリポジトリにコミットしており、それがリリース配布物
+# （traffic_census_<年度>_qgis.zip）の元になる。generate_qml.py の色・区分を直したあとに
+# generate_qgis_bundle.py の再実行を忘れると、bundle/ だけが古いまま残り
+# 「スタイル本体はQMLの埋め込みなので色・区分は常に一致」という前提が静かに崩れる。
+# 出力は ZIP_EPOCH 固定で再現的なので、再生成して git diff が空かを見れば検知できる。
+#
+# GeoParquet を同梱する --pack はここでは実行しない（data/ が .gitignore 対象で CI に存在しないため）。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'configs/qgis_styles/**'
+      - '.github/workflows/check-qgis-styles.yml'
+  pull_request:
+    paths:
+      - 'configs/qgis_styles/**'
+      - '.github/workflows/check-qgis-styles.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # どちらも標準ライブラリのみで動くので pip install は不要。
+      - name: 主題図QMLを再生成
+        run: python configs/qgis_styles/generate_qml.py
+
+      - name: 同梱物（bundle/）を再生成
+        run: python configs/qgis_styles/generate_qgis_bundle.py
+
+      - name: コミット済みの生成物と一致するか
+        run: |
+          if ! git diff --exit-code --stat; then
+            echo "::error::生成物がコミット済みの内容と一致しません。再生成漏れの可能性があります。"
+            echo "ローカルで次を実行し、差分をコミットしてください:"
+            echo "  python configs/qgis_styles/generate_qml.py"
+            echo "  python configs/qgis_styles/generate_qgis_bundle.py"
+            echo "--- 差分 ---"
+            git diff
+            exit 1
+          fi
+          echo "生成物はコミット済みの内容と一致しています。"
