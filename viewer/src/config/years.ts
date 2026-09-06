@@ -71,8 +71,8 @@ const H27_ENV = import.meta.env.VITE_PMTILES_H27_URL as string | undefined;
 
 /** 本番ホスト（レンタルサーバ, HTTP Range 対応）の既定 URL */
 const PROD_URL: Record<YearId, string> = {
-  r03: 'https://shiworks2.xsrv.jp/mlit-road-traffic-census/traffic_census_2021_converted.pmtiles',
-  h27: 'https://shiworks2.xsrv.jp/mlit-road-traffic-census/traffic_census_2015_converted.pmtiles',
+  r03: 'https://shi-works.com/mlit-road-traffic-census/traffic_census_2021_converted.pmtiles',
+  h27: 'https://shi-works.com/mlit-road-traffic-census/traffic_census_2015_converted.pmtiles',
 };
 
 /**
@@ -88,8 +88,8 @@ const resolveUrl = (id: YearId, env: string | undefined): string => {
 
 /** 時間帯別交通量JSONの本番配信ベース（PMTilesと同じレンタルサーバ） */
 const JIKANTAI_PROD_BASE: Record<YearId, string> = {
-  r03: 'https://shiworks2.xsrv.jp/mlit-road-traffic-census/jikantai/r03/',
-  h27: 'https://shiworks2.xsrv.jp/mlit-road-traffic-census/jikantai/h27/',
+  r03: 'https://shi-works.com/mlit-road-traffic-census/jikantai/r03/',
+  h27: 'https://shi-works.com/mlit-road-traffic-census/jikantai/h27/',
 };
 const JIKANTAI_ENV: Record<YearId, string | undefined> = {
   r03: import.meta.env.VITE_JIKANTAI_R03_BASE as string | undefined,
